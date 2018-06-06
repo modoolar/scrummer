@@ -52,7 +52,6 @@ class AgileBoardImporter(models.AbstractModel):
         """
         return {
             'name': board['name'],
-            'workflow_id': workflow.id,
             'description': board['description'],
             'type': board['type'],
             'is_default': board['is_default'],
@@ -67,6 +66,7 @@ class AgileBoardImporter(models.AbstractModel):
         return {
             'name': column['name'],
             'order': column['order'],
+            'workflow_id': workflow.id,
             'status_ids': [
                 (0, 0, self.prepare_status(workflow, wkf_states, status))
                 for status in column['statuses']
@@ -79,6 +79,7 @@ class AgileBoardImporter(models.AbstractModel):
         :return: Returns prepared ``project.workflow.transition`` values.
         """
         return {
+            'workflow_id': workflow.id,
             'state_id': wkf_states[status['wkf_state']].id,
             'order': status['order'],
         }
