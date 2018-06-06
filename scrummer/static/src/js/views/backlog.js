@@ -177,6 +177,7 @@ odoo.define('scrummer.view.backlog', function (require) {
                 });
             });
             this.bindEventListeners();
+            return this._super();
         },
         bindEventListeners() {
             this.$('.tooltipped').tooltip({delay: 50});
