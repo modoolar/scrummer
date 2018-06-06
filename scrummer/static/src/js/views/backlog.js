@@ -369,11 +369,11 @@ odoo.define('scrummer.view.backlog', function (require) {
         },
 
         _onProjectTaskWrite(id, vals, payload, record) {
-            this.removeTask(id, true);
-            this.addTask(id, payload, data.session.uid === payload.user_id.id);
-            if (this.rightSideWidget && this.rightSideWidget.id === id) {
-                let editPromise = record && record._edit("check") ? record._edit() : $.when();
-                editPromise.then(() => {
+            let editPromise = record && record._edit("check") ? record._edit() : $.when();
+            editPromise.then(() => {
+                this.removeTask(id, true);
+                this.addTask(id, payload, data.session.uid === payload.user_id.id);
+                if (this.rightSideWidget && this.rightSideWidget.id === id) {
                     // Since trigger_up wraps event arguments in data object, here I mimic that behaviour.
                     this.trigger("open_right_side", {
                         data: {
@@ -381,9 +381,8 @@ odoo.define('scrummer.view.backlog', function (require) {
                             options: {id, isQuickDetailView: true}
                         }
                     });
-                });
-
-            }
+                }
+            });
         },
         _onProjectTaskCreate(id, vals, payload) {
             this.addTask(id, payload);
@@ -783,3 +782,4 @@ odoo.define('scrummer.view.backlog', function (require) {
         NonBacklogList
     };
 });
+
