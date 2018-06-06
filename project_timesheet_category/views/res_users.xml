@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+# Copyright 2017 - 2018 Modoolar <info@modoolar.com>
+# License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
+-->
+<odoo>
+    <!-- Update Preferences form !-->
+    <record id="view_users_form_simple_modif_timesheet_category_inherit" model="ir.ui.view">
+        <field name="name">res.users.preferences.timesheet.category.inherited</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif"/>
+        <field name="arch" type="xml">
+            <data>
+                <field name="tz" position="after">
+                    <field name="default_timesheet_category_id"/>
+                </field>
+            </data>
+        </field>
+    </record>
+    <!-- Update user form !-->
+    <record id="view_users_form_timesheet_category_inherit" model="ir.ui.view">
+        <field name="name">res.users.form.timesheet.category.inherited</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <group name="preferences" position="after">
+                <group string="Timesheets" name="timesheets">
+                    <field name="default_timesheet_category_id"/>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+# Copyright 2017 - 2018 Modoolar <info@modoolar.com>
+# License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
+-->
+<odoo>
+    <data noupdate="1">
+        <record id="project_timesheet_category_pm" model="project.timesheet.category">
+            <field name="name">Project Management</field>
+            <field name="code">PM</field>
+        </record>
+
+        <record id="project_timesheet_category_analysis" model="project.timesheet.category">
+            <field name="name">Business Analysis</field>
+            <field name="code">BA</field>
+        </record>
+
+
+        <record id="project_timesheet_category_development" model="project.timesheet.category">
+            <field name="name">Development</field>
+            <field name="code">DEV</field>
+        </record>
+
+        <record id="project_timesheet_category_qa" model="project.timesheet.category">
+            <field name="name">Quality Assurance</field>
+            <field name="code">QA</field>
+        </record>
+
+        <record id="project_timesheet_category_devops" model="project.timesheet.category">
+            <field name="name">Devops</field>
+            <field name="code">DO</field>
+        </record>
+
+        <record id="project_timesheet_category_support" model="project.timesheet.category">
+            <field name="name">Support</field>
+            <field name="code">SUP</field>
+        </record>
+    </data>
+</odoo>

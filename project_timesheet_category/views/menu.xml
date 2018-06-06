@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+# Copyright 2017 - 2018 Modoolar <info@modoolar.com>
+# License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
+-->
+<odoo>
+    <menuitem id="timesheet_preferences"
+              name="Preferences"
+              sequence="1000"
+              parent="hr_timesheet.timesheet_menu_root"/>
+
+    <menuitem id="timesheet_categories"
+              name="Timesheet categories"
+              parent="timesheet_preferences"
+              action="action_timesheet_categories"/>
+</odoo>

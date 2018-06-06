@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+# Copyright 2017 - 2018 Modoolar <info@modoolar.com>
+# License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
+-->
+<odoo>
+    <record id="action_timesheet_categories" model="ir.actions.act_window">
+        <field name="res_model">project.timesheet.category</field>
+        <field name="view_type">form</field>
+        <field name="name">Timesheet categories</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p>
+                Manage timesheet categories.
+            </p>
+        </field>
+    </record>
+    <record id="project_timesheet_category_tree" model="ir.ui.view">
+        <field name="name">project.timesheet.category.tree</field>
+        <field name="model">project.timesheet.category</field>
+        <field name="arch" type="xml">
+            <tree string="">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="billable" groups="project_timesheet_category.group_timesheet_billable"/>
+                <field name="description"/>
+            </tree>
+        </field>
+    </record>
+    <record id="project_timesheet_category_form" model="ir.ui.view">
+        <field name="name">project.timesheet.category.form</field>
+        <field name="model">project.timesheet.category</field>
+        <field name="arch" type="xml">
+            <form string="">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-check">
+                            <field name="active" widget="boolean_button" options='{"terminology": "active"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="billable" groups="project_timesheet_category.group_timesheet_billable"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+# Copyright 2017 - 2018 Modoolar <info@modoolar.com>
+# License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
+-->
+<templates xml:space="preserve">
+    <t t-extend="scrummer.task.timesheets">
+        <t t-jquery="th:contains('Description')" t-operation="after">
+            <th>Category</th>
+            <th class="is-billable">Billable</th>
+        </t>
+    </t>
+    <t t-extend="scrummer.task.timesheets.line">
+        <t t-jquery="td.name" t-operation="after">
+            <td class="category"><t t-esc="widget.record.category_id[1]"/></td>
+            <td class="is-billable"><t t-esc="widget.record.billable == 'yes' ? 'Yes' : 'No'"/></td>
+        </t>
+    </t>
+    <t t-extend="scrummer.widget.modal.work_log">
+        <t t-jquery="form div.input-help-wrapper" t-operation="after">
+            <div id="category_anchor" />
+
+            <div class="col s12" >
+            <div class="switch">
+                <label>
+                  Not Billable
+                    <input type="checkbox" id="is-billable-check" />
+                    <span class="lever"></span>
+                  Billable
+                </label>
+            </div>
+            </div>
+
+
+            <!--<div class="col s12 is-billable">-->
+                <!--<input type="checkbox" id="is-billable-check" checked="checked" />-->
+                <!--<label for="is-billable-check">Billable?</label>-->
+            <!--</div>-->
+        </t>
+    </t>
+</templates>

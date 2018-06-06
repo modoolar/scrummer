@@ -1,0 +1,13 @@
+/.settings
+/.project
+/.pydevproject
+/.idea
+/venv
+/filestore
+
+*.pyc
+*~
+*.log
+*.tmp
+*.pid
+/scrummer/static/src/.sass-cache/
