@@ -108,7 +108,7 @@
         <script type="text/javascript" src="/web/static/src/js/chrome/control_panel.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/view_manager.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/abstract_web_client.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/web_client.js"></script>
+        <script type="text/javascript" src="/web/static/src/js/chrome/web_client.js"></script>
         <script type="text/javascript" src="/web/static/src/js/_deprecated/data.js"></script>
         <script type="text/javascript" src="/web/static/src/js/core/context.js"></script>
         <script type="text/javascript" src="/web/static/src/js/core/misc.js"></script>
@@ -130,8 +130,8 @@
         <script type="text/javascript" src="/web/static/src/js/chrome/pager.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/systray_menu.js"></script>
         <script type="text/javascript" src="/web/static/src/js/widgets/switch_company_menu.js"></script>
+        <script type="text/javascript" src="/web/static/src/js/chrome/menu.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/user_menu.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/menu.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/search_view.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/search_filters.js"></script>
         <script type="text/javascript" src="/web/static/src/js/chrome/search_inputs.js"></script>
@@ -195,16 +195,6 @@
         <script type="text/javascript" src="/web/static/src/js/report/client_action.js"/>
 
         <script type="text/javascript" src="/mail/static/src/js/document_viewer.js"/>
-
-        <script type="text/javascript" src="/web_enterprise/static/src/js/apps.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/app_switcher.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/control_panel.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/menu_mobile.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/view_manager.js"></script>
-
-        <script type="text/javascript" src="/web_enterprise/static/src/js/widgets/debug_manager.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/widgets/user_menu.js"></script>
-        <script type="text/javascript" src="/web_enterprise/static/src/js/widgets/switch_company_menu.js"></script>
 
         <script type="text/javascript" src="/bus/static/src/js/bus.js"></script>
 
@@ -277,3 +267,4 @@
     </template>
 
 </odoo>
+
