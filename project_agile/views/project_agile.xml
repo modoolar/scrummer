@@ -42,7 +42,7 @@
             </button>
         </xpath>
 
-        <xpath expr="//div[@t-if='tasks']//thead//th[@class='col-md-2']" position="before">
+        <xpath expr="//div[@t-if='tasks']//thead//th[@class='col-md-10']" position="after">
             <th>Type</th>
             <th>Priority</th>
         </xpath>
