@@ -42,12 +42,12 @@
             </button>
         </xpath>
 
-        <xpath expr="//div[@t-if='grouped_tasks']//thead//th[@class='col-md-2']" position="before">
+        <xpath expr="//div[@t-if='tasks']//thead//th[@class='col-md-2']" position="before">
             <th>Type</th>
             <th>Priority</th>
         </xpath>
 
-        <xpath expr="//div[@t-if='grouped_tasks']//span[@t-field='task.name']" position="after">
+        <xpath expr="//div[@t-if='tasks']//span[@t-field='task.name']" position="after">
             <td>
                 <img style="width: 20px; vertical-align: top; text-align: center;" t-if="task.type_id.icon"
                      t-att-src="'data:image/png;base64,%s' % to_text(task.type_id.icon)"
