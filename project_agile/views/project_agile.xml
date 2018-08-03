@@ -42,7 +42,7 @@
             </button>
         </xpath>
 
-        <xpath expr="//div[@t-if='grouped_tasks']//thead//th[text() = 'Stage']" position="before">
+        <xpath expr="//div[@t-if='grouped_tasks']//thead//th[@class='col-md-2']" position="before">
             <th>Type</th>
             <th>Priority</th>
         </xpath>
@@ -216,7 +216,8 @@
                 </div>
             </div>
         </xpath>
-        <xpath expr="//strong[text()='Date:']/.." position="before">
+
+        <xpath expr="//div[@class='panel-body']/div/div/div/strong/.." position="before">
             <div>
                 <div class="mb8">
                     <strong>Type:</strong>
@@ -233,7 +234,8 @@
             </div>
         </xpath>
 
-        <xpath expr="//strong[text()='Message and communication history']/../../.." position="before">
+
+        <xpath expr="//div[@class='row mt32']//strong/../../.." position="before">
              <div t-if="bool(task.child_ids)" class="table-responsive">
                  <div>
                      <strong>Subtasks:</strong>
@@ -274,6 +276,7 @@
                 </table>
              </div>
          </xpath>
+
     </template>
 
     <template id="portal_my_task" name="My Task" inherit_id="project_workflow.portal_my_task">
