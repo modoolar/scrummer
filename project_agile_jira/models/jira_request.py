@@ -23,6 +23,8 @@ JOB_TYPE = [
     ("add_relation", "Add Relation"),
     ("add_link", "Add Link"),
     ("add_worklog", "Add Worklog"),
+    ("add_comment", "Add Comment"),
+    ("add_attachment", "Add Attachment")
 ]
 
 

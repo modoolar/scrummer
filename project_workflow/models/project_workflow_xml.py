@@ -324,7 +324,7 @@ class XmlWorkflowWriter(models.AbstractModel):
         """
         return {
             'name': workflow.name,
-            'description': workflow.description,
+            'description': workflow.description or "",
             'default-state': workflow.default_state_id.name
         }
 

@@ -15,7 +15,7 @@
     ],
 
     "data": [
-        "views/scrummer_workflow_security.xml",
+        "views/scrummer_workflow_transition_by_project.xml",
     ],
     "images": [],
     "installable": True,

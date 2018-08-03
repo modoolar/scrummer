@@ -40,7 +40,7 @@ class StageChangeConfirmationWizard(models.TransientModel):
         self.task_id.write(values)
 
         if self.message:
-            return self.message_post(body=self.message, message_type='comment')
+            return self.task_id.message_post(body=self.message, message_type='comment')
 
         return {'type': 'ir.actions.act_window_close'}
 

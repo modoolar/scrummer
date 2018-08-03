@@ -5,6 +5,9 @@ import logging
 import traceback
 import ast
 import re
+import base64
+
+from textile import textile
 
 from contextlib import contextmanager
 
@@ -56,6 +59,10 @@ class JiraWorker(models.AbstractModel):
                         transaction.add_link(request)
                     elif request.job_type == "add_worklog":
                         transaction.add_worklog(request)
+                    elif request.job_type == "add_comment":
+                        transaction.add_comment(request)
+                    elif request.job_type == "add_attachment":
+                        transaction.add_attachment(request)
                     else:
                         pass
                 except BaseException as ex:
@@ -74,6 +81,8 @@ class JiraWorker(models.AbstractModel):
         relationships = list()
         links = list()
         worklogs = list()
+        comments = list()
+        attachmnets = list()
 
         args = list()
         if request.args:
@@ -102,7 +111,20 @@ class JiraWorker(models.AbstractModel):
                 worklogs.append({
                     "user": worklog.author.displayName,
                     "duration": worklog.timeSpentSeconds/3600,
-                    "description": worklog.comment,
+                    "description": getattr(worklog, 'comment', ""),
+                    "issue": issue.key,
+                })
+
+            for comment in issue.fields.comment.comments:
+                comments.append({
+                    "user": comment.author.displayName,
+                    "description": textile(comment.body),
+                    "issue": issue.key,
+                })
+
+            for attachment in issue.fields.attachment:
+                attachmnets.append({
+                    "jira_id": attachment.id,
                     "issue": issue.key,
                 })
 
@@ -147,6 +169,26 @@ class JiraWorker(models.AbstractModel):
                 })]
             })
 
+        def create_add_comment_job():
+            request.config_id.write({
+                "request_ids": [(0, 0, {
+                    "project_id": request.project_id.id,
+                    "args": [comment],
+                    "kwargs":  {},
+                    "job_type": "add_comment"
+                })]
+            })
+
+        def create_add_attachment_job():
+            request.config_id.write({
+                "request_ids": [(0, 0, {
+                    "project_id": request.project_id.id,
+                    "args": [attachment],
+                    "kwargs":  {},
+                    "job_type": "add_attachment"
+                })]
+            })
+
         client = jira.JIRA(
             server=request.config_id.location,
             basic_auth=(request.config_id.username, request.config_id.password)
@@ -154,7 +196,8 @@ class JiraWorker(models.AbstractModel):
 
         issues = client.search_issues(
             "project=%s" % request.project_id.key,
-            fields="subtasks, issuelinks, worklog"
+            fields="subtasks, issuelinks, worklog, attachment, comment",
+            maxResults=2000
         )
 
         for issue in issues:
@@ -170,6 +213,12 @@ class JiraWorker(models.AbstractModel):
 
         for worklog in worklogs:
             create_add_worklog_job()
+
+        for comment in comments:
+            create_add_comment_job()
+
+        for attachment in attachmnets:
+            create_add_attachment_job()
 
         request.project_id.write({"task_sequence": max_issue_number})
 
@@ -196,7 +245,7 @@ class JiraWorker(models.AbstractModel):
             data = {
                 "project_id": request.project_id.id,
                 "name": issue.raw["fields"]["summary"],
-                "description": issue.raw["fields"]["description"],
+                "description": textile(issue.raw["fields"]["description"]),
                 "user_id": False,
                 "create_uid": False,
             }
@@ -228,8 +277,23 @@ class JiraWorker(models.AbstractModel):
                 type_id = kwargs[issue.raw["fields"]["issuetype"]["name"]]
                 data["type_id"] = type_id
 
+            if issue.raw["fields"]["timeoriginalestimate"]:
+                original_estimate = issue.raw["fields"]["timeoriginalestimate"]
+                data["planned_hours"] = float(original_estimate/3600)
+
             task = self.env["project.task"].create(data)
             task.write({"key": key})
+            # Меняем статус для задачи.
+            if issue.raw["fields"]["status"]:
+                status_name = issue.raw["fields"]["status"]["name"]
+                # Находим нужный id по имени статуса.
+                # default_type_id = request.project_id.default_task_type_id
+                stage_id = request.project_id.type_ids.search([('name', '=', status_name)])
+                # Прописываем явное присваивание, т.к. в "дебрях" новые задачи
+                # всегда создаются с дефольтным значением статуса.
+                # Это значение устанавливается в настройках Workflow
+                if stage_id:
+                    task.write({"stage_id": stage_id and stage_id.id or False})
 
     def add_relation(self, request):
         args = list()
@@ -282,7 +346,8 @@ class JiraWorker(models.AbstractModel):
             data = {
                 "unit_amount": arg["duration"],
                 "name": arg["description"],
-                "account_id": request.project_id.analytic_account_id.id
+                "account_id": request.project_id.analytic_account_id.id,
+                "project_id": request.project_id.id
             }
 
             user = self.env["res.users"].search([
@@ -297,3 +362,53 @@ class JiraWorker(models.AbstractModel):
             task.write({
                 "timesheet_ids": [(0, 0, data)]
             })
+
+    def add_comment(self, request):
+        args = list()
+
+        if request.args:
+            args = ast.literal_eval(request.args)
+
+        for arg in args:
+            user_id = self.env["res.users"].search([
+                ("name", "ilike", arg["user"])
+            ])
+
+            author = user_id and user_id.partner_id.id or False
+
+            task = self.env["project.task"].search([
+                ("key", "=", arg["issue"])
+            ])
+            task.message_post(
+                body=arg['description'], message_type='comment',
+                subtype='mail.mt_comment',
+                author_id=author)
+
+    def add_attachment(self, request):
+        args = list()
+
+        if request.args:
+            args = ast.literal_eval(request.args)
+
+        for arg in args:
+            task = self.env["project.task"].search([
+                ("key", "=", arg["issue"])
+            ])
+            # Т.к. аттачи могут быть достаточно объемными,
+            # то затягиваем их отдельными запросами из Jira
+            client = jira.JIRA(
+                server=request.config_id.location,
+                basic_auth=(request.config_id.username, request.config_id.password)
+            )
+            attachment = client.attachment(arg["jira_id"])
+
+            data = {
+                "datas": base64.b64encode(attachment.get()),
+                "datas_fname": attachment.filename,
+                "name": attachment.filename,
+                "res_id": task.id,
+                "res_model": "project.task"
+            }
+
+            ir_attachment = self.env['ir.attachment']
+            ir_attachment.create(data)
