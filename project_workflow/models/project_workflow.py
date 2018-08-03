@@ -2,7 +2,7 @@
 # License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
 
 from odoo import models, fields, api, exceptions, _
-from odoo.tools import safe_eval
+from odoo.tools.safe_eval import safe_eval
 
 
 class Workflow(models.Model):
