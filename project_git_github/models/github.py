@@ -84,7 +84,6 @@ class GitPayloadParser(models.AbstractModel):
     # Payload
     # -------------------------------------------
     def parse_github_payload(self, context):
-        _logger.debug('context values: '.format(context))
         method_name = self, "parse_github_%s" % context.action_type
         parse_event_method = getattr(method_name)
         return parse_event_method(context)

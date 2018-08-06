@@ -24,7 +24,6 @@ class GitPayloadParser(models.AbstractModel):
 
     def parse(self, context):
         parse_method_name = "parse_%s_payload" % context.type
-        _logger.debug('contex.type values:'.format(context.type))
         if not hasattr(self, parse_method_name):
             raise exceptions.ValidationError(
                 _("Unable to find parsing method for '%s'") % (context.type, )

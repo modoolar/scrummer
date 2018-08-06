@@ -79,7 +79,6 @@ class GitContext(object):
     @property
     def payload(self):
         if not self._payload:
-            _logger.debug('DEBUG self.payload values: '.format(self.payload))
             self._payload = self.parser.parse(self)
         return self._payload
 
@@ -201,7 +200,6 @@ class GitController(http.Controller):
             # ------------------------------------------------------------
 
             try:
-                _logger.debug('DEBUG context values :{}'.format(context))
                 payload = context.payload
             except Exception as ex:
                 import traceback
