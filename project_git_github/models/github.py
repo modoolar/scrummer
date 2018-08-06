@@ -1,5 +1,6 @@
 # Copyright 2017 - 2018 Modoolar <info@modoolar.com>
 # License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
+import logging
 
 from dateutil.parser import parse
 
@@ -7,6 +8,7 @@ from odoo import models, fields, http
 
 TYPE = [('github', 'GitHub')]
 
+_logger = logging.getLogger(__name__)
 
 class GitUser(models.Model):
     _inherit = 'project.git.user'
@@ -82,6 +84,7 @@ class GitPayloadParser(models.AbstractModel):
     # Payload
     # -------------------------------------------
     def parse_github_payload(self, context):
+        _logger.debug('context values: '.format(context))
         method_name = self, "parse_github_%s" % context.action_type
         parse_event_method = getattr(method_name)
         return parse_event_method(context)
