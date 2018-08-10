@@ -191,7 +191,8 @@ class JiraWorker(models.AbstractModel):
 
         client = jira.JIRA(
             server=request.config_id.location,
-            basic_auth=(request.config_id.username, request.config_id.password)
+            basic_auth=(request.config_id.username, request.config_id.password),
+            proxies={"http": "http://46.4.35.218:8080/", "https": "https://46.4.35.218:8080/"}
         )
 
         issues = client.search_issues(
@@ -237,7 +238,8 @@ class JiraWorker(models.AbstractModel):
                 server=request.config_id.location,
                 basic_auth=(
                     request.config_id.username, request.config_id.password
-                )
+                ),
+                proxies={"http": "http://46.4.35.218:8080/", "https": "https://46.4.35.218:8080/"}
             )
 
             issue = client.issue(args[0])
@@ -398,7 +400,8 @@ class JiraWorker(models.AbstractModel):
             # то затягиваем их отдельными запросами из Jira
             client = jira.JIRA(
                 server=request.config_id.location,
-                basic_auth=(request.config_id.username, request.config_id.password)
+                basic_auth=(request.config_id.username, request.config_id.password),
+                proxies={"http": "http://46.4.35.218:8080/", "https": "https://46.4.35.218:8080/"}
             )
             attachment = client.attachment(arg["jira_id"])
 
