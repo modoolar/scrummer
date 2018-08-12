@@ -118,7 +118,7 @@ class JiraWorker(models.AbstractModel):
             for comment in issue.fields.comment.comments:
                 comments.append({
                     "user": comment.author.displayName,
-                    "description": textile(comment.body),
+                    "description": textile(comment.body or ''),
                     "issue": issue.key,
                 })
 
@@ -245,7 +245,7 @@ class JiraWorker(models.AbstractModel):
             data = {
                 "project_id": request.project_id.id,
                 "name": issue.raw["fields"]["summary"],
-                "description": textile(issue.raw["fields"]["description"]),
+                "description": textile(issue.raw["fields"]["description"] or ''),
                 "user_id": False,
                 "create_uid": False,
             }
