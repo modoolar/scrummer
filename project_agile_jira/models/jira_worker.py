@@ -194,33 +194,42 @@ class JiraWorker(models.AbstractModel):
             basic_auth=(request.config_id.username, request.config_id.password)
         )
 
-        issues = client.search_issues(
-            "project=%s" % request.project_id.key,
-            fields="subtasks, issuelinks, worklog, attachment, comment",
-            maxResults=2000
-        )
+        OFFSET = 0
+        while True:
+            issues = client.search_issues(
+                "project=%s" % request.project_id.key,
+                startAt=OFFSET,
+                fields="subtasks, issuelinks, worklog, attachment, comment",
+                maxResults=100
+            )
+            # Если пустой результат, то выходим из цикла
+            if not issues:
+                break
 
-        for issue in issues:
-            number = create_issue_import_job()
-            if number > max_issue_number:
-                max_issue_number = number
+            for issue in issues:
+                number = create_issue_import_job()
+                if number > max_issue_number:
+                    max_issue_number = number
 
-        for relation in relationships:
-            create_add_relation_job()
+            for relation in relationships:
+                create_add_relation_job()
 
-        for link in links:
-            create_add_link_job()
+            for link in links:
+                create_add_link_job()
 
-        for worklog in worklogs:
-            create_add_worklog_job()
+            for worklog in worklogs:
+                create_add_worklog_job()
 
-        for comment in comments:
-            create_add_comment_job()
+            for comment in comments:
+                create_add_comment_job()
 
-        for attachment in attachmnets:
-            create_add_attachment_job()
+            for attachment in attachmnets:
+                create_add_attachment_job()
 
-        request.project_id.write({"task_sequence": max_issue_number})
+            request.project_id.write({"task_sequence": max_issue_number})
+
+            # Увеличиваем OFFSET
+            OFFSET += 100
 
     def import_issue(self, request):
 
