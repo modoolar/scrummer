@@ -211,25 +211,25 @@ class JiraWorker(models.AbstractModel):
                 if number > max_issue_number:
                     max_issue_number = number
 
-            for relation in relationships:
-                create_add_relation_job()
-
-            for link in links:
-                create_add_link_job()
-
-            for worklog in worklogs:
-                create_add_worklog_job()
-
-            for comment in comments:
-                create_add_comment_job()
-
-            for attachment in attachmnets:
-                create_add_attachment_job()
-
-            request.project_id.write({"task_sequence": max_issue_number})
+                request.project_id.write({"task_sequence": max_issue_number})
 
             # Увеличиваем OFFSET
             OFFSET += 100
+
+        for relation in relationships:
+            create_add_relation_job()
+
+        for link in links:
+            create_add_link_job()
+
+        for worklog in worklogs:
+            create_add_worklog_job()
+
+        for comment in comments:
+            create_add_comment_job()
+
+        for attachment in attachmnets:
+            create_add_attachment_job()
 
     def import_issue(self, request):
 
@@ -318,7 +318,7 @@ class JiraWorker(models.AbstractModel):
 
             if parent_task and task:
                 task.write({
-                    "parent_id": task.id
+                    "parent_id": parent_task.id
                 })
 
     def add_link(self, request):
