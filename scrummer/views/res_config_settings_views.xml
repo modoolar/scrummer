@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.project</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="60"/>
+        <field name="inherit_id" ref="project.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@data-key='project']">
+                <h2>Scrummer</h2>
+                <div class="row mt16 o_settings_container" id="scrummer">
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_scrum">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_scrum"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_scrum"/>
+                            <div class="text-muted">
+                                Track your projects by Scrum.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_kanban">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_kanban"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_kanban"/>
+                            <div class="text-muted">
+                                Track your projects by Kanban.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_git">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_git"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_git"/>
+                            <div class="text-muted">
+                                Integrate scrummer with Project Git
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_timesheet_category">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_timesheet_category"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_timesheet_category"/>
+                            <div class="text-muted">
+                                Use timesheet categories in Scrummer
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_workflow_security">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_workflow_security"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_workflow_security"/>
+                            <div class="text-muted">
+                                Activate project workflow security
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_workflow_transitions_by_task_type">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_workflow_transitions_by_task_type"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_workflow_transitions_by_task_type"/>
+                            <div class="text-muted">
+                                Activate project workflow tranistions by task type
+                            </div>
+                        </div>
+                    </div>
+                     <div class="col-xs-12 col-md-6 o_setting_box" id="scrummer_workflow_transition_by_project">
+                        <div class="o_setting_left_pane">
+                            <field name="module_scrummer_workflow_transition_by_project"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="module_scrummer_workflow_transition_by_project"/>
+                            <div class="text-muted">
+                                Activate project workflow tranistions by project
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
