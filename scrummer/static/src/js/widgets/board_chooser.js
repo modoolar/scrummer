@@ -4,7 +4,7 @@
 odoo.define('scrummer.board_chooser', function (require) {
     "use strict";
 
-    const data = require('scrummer.data');
+    const ScrummerData = require('scrummer.data');
     const AbstractModelList = require('scrummer.abstract_model_list');
     const AgileBaseWidget = require('scrummer.BaseWidgets').AgileBaseWidget;
     const storage_service = require('scrummer.storage_service');
@@ -13,6 +13,30 @@ odoo.define('scrummer.board_chooser', function (require) {
     const _t = require('web.core')._t;
     const crash_manager = require('web.crash_manager');
 
+    const BoardListItem = AgileBaseWidget.extend({
+        _name: "BoardListItem",
+        template: "scrummer.list.board_chooser_item",
+        init(parent, options) {
+            this._super(parent, options);
+            Object.assign(this, options);
+        },
+        start() {
+            if (this.id === hash_service.get("board")) {
+                this.destroy();
+            } else {
+                // When clicked on project in dashboard, fetch all boards and open last board.
+                this.$("a").click(() => {
+                    this.selectBoard();
+                });
+            }
+            return this._super();
+        },
+        selectBoard() {
+            this.trigger_up("set_board", {id: this.record.id});
+            this.destroy();
+        }
+    });
+    BoardListItem.sort_by = "id";
     const BoardChooser = AgileBaseWidget.extend({
         _name: "BoardChooser",
         template: "scrummer.board_chooser",
@@ -25,24 +49,24 @@ odoo.define('scrummer.board_chooser', function (require) {
         init(parent, options) {
             Object.assign(this, options);
             this._super(parent, options);
-            this.current_board = parseInt(hash_service.get("board"));
-            this.current_project = parseInt(hash_service.get("project"));
+            this.current_board = parseInt(hash_service.get("board"), 10);
+            this.current_project = parseInt(hash_service.get("project"), 10);
         },
         willStart() {
             return $.when(
                 this._super(),
                 // Store reference to current_user, so that we can use it in synchronous methods
-                data.cache.get("current_user").then(user => {
+                ScrummerData.cache.get("current_user").then((user) => {
                     this.user = user;
                 }),
                 // If current_project is set, fetch it and store so that it can be used in synchronous project_image_url method
-                this.current_project && DataServiceFactory.get("project.project").getRecord(this.current_project).then(project => {
+                this.current_project && DataServiceFactory.get("project.project").getRecord(this.current_project).then((project) => {
                     this.project = project;
                 })
             ).then(() => {
-                let board_service = DataServiceFactory.get("project.agile.board");
-                let project_ids = this.current_project ? [this.current_project] : this.user.team_ids[this.user.team_id[0]].project_ids;
-                let board_filter = [
+                const board_service = DataServiceFactory.get("project.agile.board");
+                const project_ids = this.current_project ? [this.current_project] : this.user.team_ids[this.user.team_id[0]].project_ids;
+                const board_filter = [
                     "|",
                     "&",
                     ["visibility", "=", "global"],
@@ -62,37 +86,36 @@ odoo.define('scrummer.board_chooser', function (require) {
                     ["project_ids", "in", project_ids],
 
                 ];
-                return board_service.dataset.id_search("", board_filter).then(board_ids => {
-                    return board_service.getRecords(board_ids, true).then(records => {
-                        this.boards = records;
-                        if (this.boards.size == 0) {
-                            let msgPart = this.project ? _t("Project ") + this.project.name + " does not have" :
-                                _t("None of the projects have");
-                            crash_manager.show_error({
-                                type: _t("Configuration error"),
-                                message: msgPart + _t(" board associated with it."),
-                                data: {debug: ""}
-                            });
-                            hash_service.setHash("page", "dashboard");
-                            return $.Deferred().reject();
-                        }
-                        if (!this.boards.has(this.current_board) && this.boards.size > 0) {
-                            this.setBoard([...this.boards.keys()][0])
-                        } else {
-                            // save current board;
-                            this.board = this.boards.get(this.current_board);
-                        }
-                    })
-                })
+                return board_service.dataset.id_search("", board_filter).then((board_ids) => board_service.getRecords(board_ids, true).then((records) => {
+                    this.boards = records;
+                    if (this.boards.size === 0) {
+                        const msgPart = this.project ? _t("Project ") + this.project.name + " does not have"
+                            : _t("None of the projects have");
+                        crash_manager.show_error({
+                            type: _t("Configuration error"),
+                            message: msgPart + _t(" board associated with it."),
+                            data: {debug: ""}
+                        });
+                        hash_service.setHash("page", "dashboard");
+                        return $.Deferred().reject();
+                    }
+                    if (!this.boards.has(this.current_board) && this.boards.size > 0) {
+                        this.setBoard([...this.boards.keys()][0]);
+                    } else {
+                        // save current board;
+                        this.board = this.boards.get(this.current_board);
+                    }
+                }));
             });
         },
         setBoard(id) {
             storage_service.set("board", id);
 
-            let boardTypeChanged = this.board === undefined || this.board.type !== this.boards.get(id).type;
+            const boardTypeChanged = typeof this.board === "undefined" ||
+                this.board.type !== this.boards.get(id).type;
             hash_service.setHash("board", id, true, boardTypeChanged);
 
-            if (this.board !== undefined) {
+            if (this.board) {
                 this.boardList.addItem(this.board);
             }
             this.board = this.boards.get(id);
@@ -100,12 +123,13 @@ odoo.define('scrummer.board_chooser', function (require) {
                 hash_service.delete("view");
                 this.trigger_up("board_type_changed");
             }
-            this.$("a.available-boards").html(this.board.name + ' <i class="mdi mdi-menu-down right"></i>')
+            this.$("a.available-boards").html(this.board.name + ' <i class="mdi mdi-menu-down right"></i>');
         },
         start() {
             // Materialize Dropdown
             this.boardList._is_added_to_DOM.then(() => {
                 $('.dropdown-button').dropdown({
+                    /* eslint-disable no-inline-comments*/
                     inDuration: 300,
                     outDuration: 125,
                     constrain_width: true, // Does not change width of dropdown to that of the activator
@@ -119,7 +143,7 @@ odoo.define('scrummer.board_chooser', function (require) {
 
         renderElement() {
             this._super();
-            let data = [...this.boards.values()];
+            const data = [...this.boards.values()];
             this.boardList = new AbstractModelList.ModelList(this, {
                 model: "project.agile.board",
                 // useDataService: true,
@@ -135,35 +159,11 @@ odoo.define('scrummer.board_chooser', function (require) {
         },
 
         project_image_url() {
-            return this.current_project ?
-                data.getImage("project.project", this.current_project, this.project.write_date) :
-                data.getImage("project.agile.team", this.user.team_id[0]);
+            return this.current_project
+                ? ScrummerData.getImage("project.project", this.current_project, this.project.write_date)
+                : ScrummerData.getImage("project.agile.team", this.user.team_id[0]);
         }
     });
-    const BoardListItem = AgileBaseWidget.extend({
-        _name: "BoardListItem",
-        template: "scrummer.list.board_chooser_item",
-        init(parent, options) {
-            this._super(parent, options);
-            Object.assign(this, options);
-        },
-        start() {
-            if (this.id == hash_service.get("board")) {
-                this.destroy();
-            } else {
-                // When clicked on project in dashboard, fetch all boards and open last board.
-                this.$("a").click(() => {
-                    this.selectBoard();
-                });
-            }
-            return this._super();
-        },
-        selectBoard() {
-            this.trigger_up("set_board", {id: this.record.id});
-            this.destroy();
-        }
-    });
-    BoardListItem.sort_by = "id";
     return {
         BoardChooser,
         BoardListItem

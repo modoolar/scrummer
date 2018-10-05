@@ -5,69 +5,72 @@ odoo.define('scrummer.widget.modal', function (require) {
     "use strict";
     const BaseWidgets = require('scrummer.BaseWidgets');
     const DataServiceFactory = require('scrummer.data_service_factory');
-    const data = require('scrummer.data');
+    const scrummer_data = require('scrummer.data');
     const helpers = require('scrummer.helpers');
     const Many2One = require('scrummer.widget.many2one').Many2One;
     const Many2ManyTags = require('scrummer.widget.many2many_tags').Many2ManyTags;
     const _t = require("web.core")._t;
     const Attachments = require('scrummer.attachments');
+    const hash_service = require('scrummer.hash_service');
+    const Materialize = window.Materialize;
 
     const ModalWidget = BaseWidgets.AgileBaseWidget.extend({
+        /* eslint-disable no-unused-vars, no-empty-function */
         validateOptions: {},
         init(parent, options) {
             this._super(parent, options);
             Object.assign(this, options);
-            this.defaults = typeof this.defaults === "object" ? Object.assign(this.getDefaults(), this.defaults) : this.getDefaults();
+            // Inheriting widgets can override getDefaults method for setting defaults,
+            // but defaults passed in option will have higher priority
+            this.defaults = typeof this.defaults === "object" ? Object.assign({}, this.getDefaults(), this.defaults) : this.getDefaults();
             this.setEditingState();
         },
         /**
          *
-         * @param options
+         * @param {{}} options
          *
-         * @param {string} options.field
+         * @param {String} options.field
          * @param {Array} options.data
-         * @param {string} options.key
-         * @param {string} options.value
-         * @param {string} options.mdi
-         * @param {string} options.iconColor
-         * @param {string} options.iconUrl
+         * @param {String} options.key
+         * @param {String} options.value
+         * @param {String} options.mdi
+         * @param {String} options.iconColor
+         * @param {String} options.iconUrl
          * @param {Function} options.selectedValue
          * @param {Function} options.changeHandler
          */
         prepareSelection(options) {
             // Setting project selection
-            let {field, data, key = "id", value = "name", mdi, iconColor, selectedValue, changeHandler} = options;
-            let optionNodes = [];
+            const {field, data, key = "id", value = "name", mdi, iconColor, selectedValue, changeHandler} = options;
+            const optionNodes = [];
 
             // If data is object, convert it to array for further manipulation
-            let array = Array.isArray(data) ? data : Object.keys(data).map(key => data[key]);
+            const array = Array.isArray(data) ? data : Object.keys(data).map((k) => data[k]);
 
-            for (let element of array) {
-                let option = $('<option value="' + element[key] + '">' + element[value].trim() + '</option>');
+            for (const element of array) {
+                const option = $('<option value="' + element[key] + '">' + element[value].trim() + '</option>');
                 if (mdi) {
                     option.data("mdi", element[mdi]);
                 }
                 if (iconColor) {
                     option.data("iconColor", element[iconColor]);
                 }
-                optionNodes.push(option)
+                optionNodes.push(option);
             }
-
-            this.$("form [name='" + field + "'] option:not(:first)").remove();
-            this.$("form " + `[name="${field}"]`).removeClass().append(...optionNodes);
+            const selectionNode = this.$("form [name='" + field + "']");
+            selectionNode.find("option:not(:first)").remove();
+            selectionNode.removeClass().append(...optionNodes);
 
             // Select default value
             if (selectedValue) {
-                let select = this.$("form " + `[name="${field}"]`);
-                select.val(selectedValue);
+                selectionNode.val(selectedValue);
                 if (changeHandler) {
-                    changeHandler.bind(select[0])()
+                    changeHandler.bind(selectionNode[0])();
                 }
             }
 
-            this.$("form " + `[name="${field}"]`).material_select();
-
-            this.$("form " + `[name="${field}"]`).off().change(function () {
+            selectionNode.material_select();
+            selectionNode.off().change(function () {
                 $(this).valid();
                 if (changeHandler) {
                     changeHandler.bind(this)();
@@ -79,22 +82,25 @@ odoo.define('scrummer.widget.modal', function (require) {
         setDefaultState() {
         },
         start() {
-            let form = this.$("form");
+            const form = this.$("form");
             if (form.data("validator")) {
                 Object.assign(form.data("validator").settings, this.getValidateOptions());
-            }
-            else {
+            } else {
                 form.validate(this.getValidateOptions());
             }
-            form.submit(e => {
+            form.submit((e) => {
                 e.preventDefault();
                 // This check is here to make sure that submit is triggered by
                 // clicking on confirmation button and not by materialNote dropdown button
-                if (!this.submitting) return;
-                else this.submitting = false;
+                if (!this.submitting) {
+                    return;
+                }
+                this.submitting = false;
 
-                if (!$(e.target).valid()) return;
-                let formData = $(e.target).serializeObject();
+                if (!$(e.target).valid()) {
+                    return;
+                }
+                const formData = $(e.target).serializeObject();
                 this.$("[data-is-dirty='false']").each(function () {
                     delete formData[this.name];
                 });
@@ -103,9 +109,9 @@ odoo.define('scrummer.widget.modal', function (require) {
                     this.beforeHook(formData);
                 }
                 if (Object.keys(formData).length) {
-                    let submitDef = this.submit(formData, $(e.target));
+                    const submitDef = this.submit(formData, $(e.target));
                     if (typeof this.afterHook === "function") {
-                        $.when(submitDef).then(result => {
+                        $.when(submitDef).then((result) => {
                             this.afterHook(result, formData, $(e.target));
                         });
                     }
@@ -128,18 +134,19 @@ odoo.define('scrummer.widget.modal', function (require) {
             return this._super.apply(this, arguments);
         },
         /**
-         * This method should return object with default values.
+         * This method should return dictionary with default values.
          * If options.defaults is passed to constructor, it will override value from this method.
+         *
+         * @returns {{}} Dictionary with
          */
         getDefaults() {
-            return {}
+            return {};
         },
         /**
          * This method should prepare, transform and format data required by submit method
          * @param {Object} data
          */
         loadData(data) {
-
         },
 
         confirmationHandler() {
@@ -159,7 +166,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             console.warn("Modal form submit method not implemented!");
         },
         addedToDOM() {
-            let modalWidgetThis = this;
+            const modalWidgetThis = this;
             this.$el.materialModal({
                 dismissible: false,
                 ready: modalWidgetThis.modalReady.bind(this),
@@ -178,13 +185,16 @@ odoo.define('scrummer.widget.modal', function (require) {
                 focus: true,
             });
             this.$('.datepicker').pickadate({
-                selectMonths: true, // Creates a dropdown to control month
-                selectYears: 15, // Creates a dropdown of 15 years to control year,
+                // Creates a dropdown to control month
+                selectMonths: true,
+                // Creates a dropdown of 15 years to control year,
+                selectYears: 15,
                 today: 'Today',
                 clear: 'Clear',
                 close: 'Ok',
                 format: 'yyyy-mm-dd',
-                closeOnSelect: false // Close upon selecting a date,
+                // Close upon selecting a date,
+                closeOnSelect: false
             });
             if (this.edit) {
                 // this.$("form select, form input").attr("data-is-dirty", false);
@@ -193,7 +203,7 @@ odoo.define('scrummer.widget.modal', function (require) {
                 // });
                 this.populateMaterialNote();
             }
-            this.$el.on("keydown.modal", e => {
+            this.$el.on("keydown.modal", (e) => {
                 // Close on escape;
                 if (e.keyCode === 27) {
                     this.closeModal();
@@ -204,7 +214,7 @@ odoo.define('scrummer.widget.modal', function (require) {
         modalReady() {
             Materialize.updateTextFields();
             if (this.focus) {
-                this.$("form " + `[name="${this.focus}"]`).focus();
+                this.$("form [name=" + this.focus + "]").focus();
             }
         },
         renderElement() {
@@ -236,12 +246,12 @@ odoo.define('scrummer.widget.modal', function (require) {
         focus: "name",
         init(parent, options) {
             this._super(parent, options);
-            this.board_id = parseInt(hash_service.get("board"));
+            this.board_id = parseInt(hash_service.get("board"), 10);
             this._require_prop("board_id", "board_id is not set in url");
 
             if (this.edit) {
                 if (!this.edit._is_dataservice) {
-                    throw new Error("edit option must be instance of dataservice!")
+                    throw new Error("edit option must be instance of dataservice!");
                 }
                 this.currentProjectId = this.edit.project_id[0];
                 // Just for for consistancy
@@ -251,16 +261,14 @@ odoo.define('scrummer.widget.modal', function (require) {
             }
         },
         willStart() {
-            let superPromise = this._super().then(DataServiceFactory.get("project.agile.board").getRecord(this.board_id).then(board => {
+            const superPromise = this._super().then(DataServiceFactory.get("project.agile.board").getRecord(this.board_id).then((board) => {
                 this.board = board;
             }));
             // Fetch parent item
             if (this.is_sub_item()) {
-                return superPromise.then(() => {
-                    return DataServiceFactory.get("project.task").getRecord(this.parent_id).then(parent => {
-                        this.parent = parent;
-                    });
-                });
+                return superPromise.then(() => DataServiceFactory.get("project.task").getRecord(this.parent_id).then((parent) => {
+                    this.parent = parent;
+                }));
             }
             return superPromise;
         },
@@ -272,32 +280,30 @@ odoo.define('scrummer.widget.modal', function (require) {
             if (this.edit && !this.edit.date_deadline) {
                 this.$("input[name='date_deadline']").val("");
             }
-            let thisModal = this;
+            const thisModal = this;
             this.projectMany2one = new Many2One(this, {
                 label: _t("Project"),
                 model: "project.project",
                 field_name: "project_id",
                 className: "s12 m6 l6",
-                domain: data.cache.get("current_user").then(user => {
-                    return [
-                        ["board_ids", "=", this.board_id],
-                        ["id", "in", user.team_ids[user.team_id[0]].project_ids],
-                    ]
-                }),
+                domain: scrummer_data.cache.get("current_user").then((user) => [
+                    ["board_ids", "=", this.board_id],
+                    ["id", "in", user.team_ids[user.team_id[0]].project_ids],
+                ]),
                 changeHandler(evt) {
-                    thisModal.currentProjectId = parseInt(evt.target.value);
+                    thisModal.currentProjectId = parseInt(evt.target.value, 10);
                     thisModal.projectChanged();
                 },
                 // Default project in following order of priority: 1. From edit object; 2. from parent; 3. from defaults object;
                 default: this.edit && this.edit.project_id ? {
                         id: this.edit.project_id[0],
                         name: this.edit.project_id[1]
-                    } :
-                    this.parent && this.parent.project_id ? {
+                    }
+                    : this.parent && this.parent.project_id ? {
                             id: this.parent.project_id[0],
                             name: this.parent.project_id[1]
-                        } :
-                        this.defaults && this.defaults.project ? this.defaults.project : undefined
+                        }
+                        : this.defaults && this.defaults.project ? this.defaults.project : null
             });
             this.projectMany2one.appendTo(this.$("#project_id_placeholder"));
 
@@ -309,11 +315,11 @@ odoo.define('scrummer.widget.modal', function (require) {
                     default: this.edit.resolution_id ? {
                         id: this.edit.resolution_id[0],
                         name: this.edit.resolution_id[1]
-                    } : undefined,
+                    } : null,
                 });
                 this.resolutionMany2one.appendTo(this.$("#resolution_id_placeholder"));
             }
-            let tagsOptions = {
+            const tagsOptions = {
                 comodel: "project.tags",
             };
             this.edit && Object.assign(tagsOptions, {
@@ -335,21 +341,20 @@ odoo.define('scrummer.widget.modal', function (require) {
             if (!(task.date_deadline && task.date_deadline.length)) {
                 task.date_deadline = false;
             }
-            task.tag_ids = [[6, false, this.tagsMany2Many.val().map(id => parseInt(id))]];
+            task.tag_ids = [[6, false, this.tagsMany2Many.val().map((id) => parseInt(id, 10))]];
             task.description = this.$(".materialnote").code();
-            task.story_points = !!task.story_points ? task.story_points : 0;
+            task.story_points = task.story_points ? task.story_points : 0;
             if (this.is_sub_item() && !this.edit) {
                 task.sprint_id = this.parent.sprint_id ? this.parent.sprint_id[0] : false;
                 task.agile_order = this.parent.agile_order + 0.01;
             }
-            let planned_hours_raw = this.$("input[name='planned_hours']").val();
+            const planned_hours_raw = this.$("input[name='planned_hours']").val();
             try {
                 if (planned_hours_raw) {
                     task.planned_hours = helpers.time.parse(planned_hours_raw);
                 }
-            }
-            catch (e) {
-                console.log(e);
+            } catch (e) {
+                console.error(e);
                 return;
             }
         },
@@ -379,9 +384,9 @@ odoo.define('scrummer.widget.modal', function (require) {
 
             if (this.edit) {
                 return this.edit.write(task);
-            } else {
-                return data.getDataSet("project.task").create(task);
             }
+            return scrummer_data.getDataSet("project.task").create(task);
+
         },
         start() {
             if (this.currentProjectId) {
@@ -400,11 +405,8 @@ odoo.define('scrummer.widget.modal', function (require) {
                 this.$("#add-task-modal-project").attr("readonly", 1);
                 this.$("#new_item_modal_parent_name").val(this.parent.name);
                 this.$(".modal-content h4").html("<i class='mdi mdi-subdirectory-arrow-right'/> Add subtask");
-                if (!this.parent.sprint_id) {
-                    this.$(".add-to-sprint").hide();
-                }
+
             } else {
-                this.$(".add-to-sprint").hide();
                 this.$(".parent").hide();
             }
 
@@ -417,38 +419,38 @@ odoo.define('scrummer.widget.modal', function (require) {
             return this._super();
         },
         getAllowedTypes() {
-            let allowedTypes = {};
+            const allowedTypes = {};
 
-            let task_types = this.parent ? this.types[this.parent.type_id[0]].type_ids : this.project_types;
-            let table_allowed_task_types = this.board.table_task_type_ids;
+            const task_types = this.parent ? this.types[this.parent.type_id[0]].type_ids : this.project_types;
+            const table_allowed_task_types = this.board.table_task_type_ids;
 
             if (table_allowed_task_types && table_allowed_task_types.length > 0) {
-                for (let type_id of task_types) {
+                for (const type_id of task_types) {
                     if (table_allowed_task_types.includes(type_id)) {
                         allowedTypes[type_id] = this.types[type_id];
                     }
                 }
             } else {
-                for (let type_id of task_types) {
+                for (const type_id of task_types) {
                     allowedTypes[type_id] = this.types[type_id];
                 }
             }
             return allowedTypes;
         },
         getSelectedType(allowedTypes) {
-            return this.edit ? this.edit.type_id[0] :
-                Object.keys(allowedTypes).length == 1 ? Object.keys(allowedTypes)[0] :
-                    this.currentProjectId ? this.project.default_task_type_id[0] : undefined;
+            return this.edit ? this.edit.type_id[0]
+                : Object.keys(allowedTypes).length === 1 ? Object.keys(allowedTypes)[0]
+                    : this.currentProjectId ? this.project.default_task_type_id[0] : null;
         },
         projectChanged() {
-            let thisModal = this;
+            const thisModal = this;
             $.when(
                 DataServiceFactory.get("project.project", true).getRecord(this.currentProjectId),
-                data.cache.get("project.type.task_types_priorities", {id: this.currentProjectId})).then((project, result) => {
+                scrummer_data.cache.get("project.type.task_types_priorities", {id: this.currentProjectId})).then((project, result) => {
                 Object.assign(this, result);
                 this.project = project;
-                let allowedTypes = this.getAllowedTypes();
-                let selectedType = this.getSelectedType(allowedTypes);
+                const allowedTypes = this.getAllowedTypes();
+                const selectedType = this.getSelectedType(allowedTypes);
                 this.prepareSelection({
                     field: "type_id",
                     data: allowedTypes,
@@ -457,12 +459,12 @@ odoo.define('scrummer.widget.modal', function (require) {
                     selectedValue: selectedType,
                     changeHandler: function () {
                         thisModal.preparePriority(this.value);
-                        this.value && thisModal.types[this.value].allow_story_points ?
-                            thisModal.$(".estimate").show() :
-                            thisModal.$(".estimate").hide();
+                        this.value && thisModal.types[this.value].allow_story_points
+                            ? thisModal.$(".estimate").show()
+                            : thisModal.$(".estimate").hide();
                     }
                 });
-                let selectedPriority = this.edit ? this.edit.priority_id[0] : undefined;
+                const selectedPriority = this.edit ? this.edit.priority_id[0] : null;
                 this.preparePriority(selectedType, selectedPriority);
             });
 
@@ -475,8 +477,8 @@ odoo.define('scrummer.widget.modal', function (require) {
                 });
                 return;
             }
-            let prioritiesForType = this.types[type_id].priority_ids.map(key => this.priorities[key]);
-            let defaultPriority = priority_id || this.types[type_id].default_priority_id;
+            const prioritiesForType = this.types[type_id].priority_ids.map((key) => this.priorities[key]);
+            const defaultPriority = priority_id || this.types[type_id].default_priority_id;
             this.prepareSelection({
                 field: "priority_id",
                 data: prioritiesForType,
@@ -506,12 +508,12 @@ odoo.define('scrummer.widget.modal', function (require) {
                     this.edit._edit(this.editingPromise);
                 }
                 if (this.edit.parent_id) {
-                    DataServiceFactory.get("project.task").getRecord(this.edit.parent_id[0]).then(record => {
+                    DataServiceFactory.get("project.task").getRecord(this.edit.parent_id[0]).then((record) => {
                             this.parentRecord = record;
                             this.parentEditingPromise = $.Deferred();
                             this.parentRecord._edit(this.parentEditingPromise);
                         }
-                    )
+                    );
                 }
             }
         },
@@ -542,7 +544,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             //this._require_prop("userId");
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => data.cache.get("team_members", {teamId: user.team_id[0]})).then(members => {
+            return $.when(this._super(), scrummer_data.cache.get("current_user").then((user) => scrummer_data.cache.get("team_members", {teamId: user.team_id[0]})).then((members) => {
                 this.members = members;
             }));
         },
@@ -558,14 +560,14 @@ odoo.define('scrummer.widget.modal', function (require) {
         },
 
         loadData(confirmation) {
-            confirmation.log_message = !!confirmation.log_message;
+            confirmation.log_message = Boolean(confirmation.log_message);
             confirmation.message = this.$(".materialnote").code();
         },
 
         submit(confirmation, form) {
-            let taskId = form.find("#task_id").val();
+            const taskId = form.find("#task_id").val();
             confirmation.stageName = this.stageName;
-            let payload = {
+            const payload = {
                 "values": {
                     stage_id: confirmation.stage_id,
                     resolution_id: confirmation.resolution_id
@@ -573,7 +575,7 @@ odoo.define('scrummer.widget.modal', function (require) {
                 "message": confirmation.message,
                 "log_message": confirmation.log_message,
             };
-            return data.session.rpc(`/scrummer/web/data/task/${taskId}/confirm_stage_change`, payload);
+            return scrummer_data.session.rpc(`/scrummer/web/data/task/${taskId}/confirm_stage_change`, payload);
         },
 
         start() {
@@ -595,7 +597,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             this._super(parent, options);
             this._require_obj("task");
             if (!this.task._is_dataservice) {
-                throw new Error("task option must be instance of dataservice!")
+                throw new Error("task option must be instance of dataservice!");
             }
             this._require_prop("userId");
         },
@@ -614,31 +616,31 @@ odoo.define('scrummer.widget.modal', function (require) {
             worklog.user_id = this.edit ? this.edit.user_id[0] : this.userId;
             worklog.task_id = this.task.id;
 
-            let unit_amount_raw = this.$("#work_log_modal_unit_amount").val();
+            const unit_amount_raw = this.$("#work_log_modal_unit_amount").val();
             try {
                 if (unit_amount_raw) {
                     worklog.unit_amount = helpers.time.parse(unit_amount_raw);
                 }
-            }
-            catch (e) {
-                console.log(e);
+            } catch (e) {
+                console.error(e);
                 return;
             }
 
 
         },
         submit(worklog) {
-            let aal_dataset = data.getDataSet('account.analytic.line');
-            worklog['is_timesheet'] = true;
-            worklog['project_id'] = this.task.project_id[0];
-            if (this.edit)
+            const aal_dataset = scrummer_data.getDataSet('account.analytic.line');
+            worklog.is_timesheet = true;
+            worklog.project_id = this.task.project_id[0];
+            if (this.edit) {
                 return aal_dataset.write(this.edit.id, worklog).then(() => {
                     const aal_service = DataServiceFactory.get("account.analytic.line");
                     return aal_service.updateRecord([this.edit.id]).then(() => aal_service.getRecord(this.edit.id));
                 });
-            else {
-                return aal_dataset.create(worklog);
             }
+
+            return aal_dataset.create(worklog);
+
         },
         renderElement() {
             this._super();
@@ -671,6 +673,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             this.$('.modal-submit').text("Update");
         },
         populateMaterialNote() {
+            return;
         },
         getValidateOptions() {
             return {
@@ -699,7 +702,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             this._super(parent, options);
             this._require_obj("task");
             if (!this.task._is_dataservice) {
-                throw new Error("task option must be instance of dataservice!")
+                throw new Error("task option must be instance of dataservice!");
             }
         },
         setEditingState() {
@@ -714,7 +717,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             }
         },
         willStart() {
-            return $.when(this._super(), DataServiceFactory.get("project.task.link.relation").getAllRecords().then(relations => {
+            return $.when(this._super(), DataServiceFactory.get("project.task.link.relation").getAllRecords().then((relations) => {
                 Object.assign(this, {relations});
             }));
         },
@@ -723,7 +726,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             link.task_left_id = this.task.id;
         },
         submit(link) {
-            return data.session.rpc('/scrummer/web/data/task/create_link', {link});
+            return scrummer_data.session.rpc('/scrummer/web/data/task/create_link', {link});
         },
         start() {
             this.prepareSelection({
@@ -734,8 +737,8 @@ odoo.define('scrummer.widget.modal', function (require) {
                 label: _t("With item"),
                 model: "project.task",
                 field_name: "task_right_id",
-                domain: this.task_ids ? [["id", "in", this.task_ids]] : data.cache.get("current_user")
-                    .then(user => [["id", "!=", this.task_id], ["project_id", "in", user.team_ids[user.team_id[0]].project_ids]])
+                domain: this.task_ids ? [["id", "in", this.task_ids]] : scrummer_data.cache.get("current_user")
+                    .then((user) => [["id", "!=", this.task_id], ["project_id", "in", user.team_ids[user.team_id[0]].project_ids]])
             });
             this.taskRight.insertAfter(this.$("#task_right_anchor"));
 
@@ -761,7 +764,7 @@ odoo.define('scrummer.widget.modal', function (require) {
             this._super(parent, options);
             this._require_obj("task");
             if (!this.task._is_dataservice) {
-                throw new Error("task option must be instance of dataservice!")
+                throw new Error("task option must be instance of dataservice!");
             }
         },
         setEditingState() {
@@ -777,8 +780,10 @@ odoo.define('scrummer.widget.modal', function (require) {
         },
         willStart() {
             return $.when(this._super(),
-                data.xmlidToResId("mail.mt_comment").then(id => this.commentSubtypeId = id)
-            )
+                scrummer_data.xmlidToResId("mail.mt_comment").then((id) => {
+                    this.commentSubtypeId = id;
+                })
+            );
         },
         renderElement() {
             this._super();
@@ -794,17 +799,17 @@ odoo.define('scrummer.widget.modal', function (require) {
             this.attachmentsWidget.appendTo(this.$(".attachment"));
         },
         loadData(comment) {
-            comment.log_message = !!comment.log_message;
+            comment.log_message = Boolean(comment.log_message);
             comment.body = this.$(".materialnote").code();
             comment.attachment_ids = this.attachmentsWidget.getIds();
         },
         submit(comment) {
             if (!this.edit) {
-                return data.session.rpc(`/scrummer/web/data/task/${this.task.id}/add_comment`, {comment});
+                return scrummer_data.session.rpc(`/scrummer/web/data/task/${this.task.id}/add_comment`, {comment});
             }
-            else {
-                return data.session.rpc(`/scrummer/web/data/task/${this.task.id}/update_comment/${this.edit.id}`, {comment});
-            }
+
+            return scrummer_data.session.rpc(`/scrummer/web/data/task/${this.task.id}/update_comment/${this.edit.id}`, {comment});
+
         },
         populateFieldValues() {
             if (this.edit.subtype_id[0] === this.commentSubtypeId) {

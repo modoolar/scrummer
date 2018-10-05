@@ -17,6 +17,7 @@ odoo.define('scrummer.widget.task', function (require) {
     const dialog = require('scrummer.dialog');
     const mixins = require('scrummer.mixins');
     const ActivityStream = require('scrummer.activity_stream').ActivityStream;
+    const hash_service = require('scrummer.hash_service');
 
     const TimeSheetListItem = AbstractModelList.AbstractModelListItem.extend({
         template: "scrummer.task.timesheets.line",
@@ -40,11 +41,11 @@ odoo.define('scrummer.widget.task', function (require) {
             this.$(".remove-timesheet").click(this.remove.bind(this));
             this.$(".edit-timesheet").click(() => {
                 //let oldUnitAmount = this.record.unit_amount;
-                var modal = new AgileModals.WorkLogModal(this, {
+                const modal = new AgileModals.WorkLogModal(this, {
                     task: this.task,
                     userId: data.session.uid,
                     edit: this.record,
-                    afterHook: workLog => {
+                    afterHook: (workLog) => {
                         this.updateWorklog(workLog);
                     }
                 });
@@ -53,8 +54,8 @@ odoo.define('scrummer.widget.task', function (require) {
             return this._super();
         },
 
-        updateWorklog(worklog) {
-            let oldUnitAmount = this.record._previous.unit_amount;
+        updateWorklog() {
+            const oldUnitAmount = this.record._previous.unit_amount;
             this.formated_time = helpers.time.format(this.record.unit_amount);
             this.$(".formated_time").text(this.formated_time);
             this.$(".date").text(this.record.date);
@@ -75,7 +76,7 @@ odoo.define('scrummer.widget.task', function (require) {
                 sequence: 1,
                 hidden() {
                     return this.data_service.getRecord(this.id)
-                        .then(task => task.user_id && task.user_id[0] == data.session.uid)
+                        .then((task) => task.user_id && task.user_id[0] === data.session.uid);
                 },
             },
             {
@@ -86,7 +87,7 @@ odoo.define('scrummer.widget.task', function (require) {
                 sequence: 2,
                 hidden() {
                     return this.data_service.getRecord(this.id)
-                        .then(task => !(task.user_id && task.user_id[0] == data.session.uid))
+                        .then((task) => !(task.user_id && task.user_id[0] === data.session.uid));
                 },
             },
             {
@@ -104,11 +105,9 @@ odoo.define('scrummer.widget.task', function (require) {
                 sequence: 4,
                 hidden() {
                     return this.data_service.getRecord(this.id)
-                        .then(task => {
-                            return DataServiceFactory.get("project.task.type2")
-                                .getRecord(task.type_id[0])
-                                .then(task_type => !task_type.allow_sub_tasks)
-                        })
+                        .then((task) => DataServiceFactory.get("project.task.type2")
+                            .getRecord(task.type_id[0])
+                            .then((task_type) => !task_type.allow_sub_tasks));
                 },
             },
             {
@@ -141,8 +140,8 @@ odoo.define('scrummer.widget.task', function (require) {
             },
         ],
         custom_events: Object.assign({}, BaseWidgets.DataWidget.prototype.custom_events || {}, {
-          "attachment_upload_started": "_onAttachmentUploadStarted",
-          "attachment_upload_finished": "_onAttachmentUploadFinished",
+            "attachment_upload_started": "_onAttachmentUploadStarted",
+            "attachment_upload_finished": "_onAttachmentUploadFinished",
         }),
         init(parent, options) {
             mixins.MenuItemsMixin.init.call(this);
@@ -164,7 +163,7 @@ odoo.define('scrummer.widget.task', function (require) {
             writed ? this.editingPromise.resolve() : this.editingPromise.reject();
         },
         willStart() {
-            let superPromise = this._super();
+            const superPromise = this._super();
             this.subtasksPromise = $.Deferred();
             this.timesheetsPromise = $.Deferred();
             this.tagsPromise = $.Deferred();
@@ -187,17 +186,15 @@ odoo.define('scrummer.widget.task', function (require) {
                     .then(this.attachmentsPromise.resolve, this.attachmentsPromise.reject);
             });
 
-            return superPromise.then(() => {
-                return DataServiceFactory.get("project.task.type2").getRecord(this._model.type_id[0]).then(task_type => {
-                    this.task_type = task_type;
-                })
-            });
+            return superPromise.then(() => DataServiceFactory.get("project.task.type2").getRecord(this._model.type_id[0]).then((task_type) => {
+                this.task_type = task_type;
+            }));
         },
         renderElement() {
             this.project_image = data.getImage("project.project", this._model.project_id[0], this._model.project_last_update);
             this._super();
 
-            this.subtasksPromise.then(result => {
+            this.subtasksPromise.then((result) => {
                 this.subtaskList = new AbstractModelList.ModelList(this, {
                     template: "scrummer.backlog.task_list",
                     model: "project.task",
@@ -215,16 +212,16 @@ odoo.define('scrummer.widget.task', function (require) {
                 }
 
             });
-            this.tagsPromise.then(result => {
-                let tagContainer = this.$("[data-field='tag_ids']");
-                for (let tag of result) {
-                    tagContainer.append($(`<span class="tag o_tag_color_${tag.color}">${tag.name}</span>`))
+            this.tagsPromise.then((result) => {
+                const tagContainer = this.$("[data-field='tag_ids']");
+                for (const tag of result) {
+                    tagContainer.append($(`<span class="tag o_tag_color_${tag.color}">${tag.name}</span>`));
                 }
                 this.$("[data-field-name='tag_ids']").show();
 
             });
 
-            this.timesheetsPromise.then(result => {
+            this.timesheetsPromise.then((result) => {
                 this.timesheetList = new AbstractModelList.ModelList(this, {
                     _name: "Task Timesheets",
                     template: "scrummer.task.timesheets",
@@ -252,7 +249,7 @@ odoo.define('scrummer.widget.task', function (require) {
             });
             this.activityStream = new ActivityStream(this, {
                 showMessageName: true,
-                task_ids:[this.id]
+                task_ids: [this.id]
             });
             this.activityStream.appendTo(this.$(".collapsible li.comments .collapsible-body"));
             this.taskLinksWidget.appendTo(this.$(".collapsible li.links .collapsible-body"));
@@ -261,9 +258,9 @@ odoo.define('scrummer.widget.task', function (require) {
                     this.$(".collapsible li.links").show();
                 }
             });
-            this.attachmentsPromise.then(attachments => {
+            this.attachmentsPromise.then((attachments) => {
                 this.attachmentsData = attachments;
-                let placeholderNode = this.$(".collapsible li.attachments .collapsible-body");
+                const placeholderNode = this.$(".collapsible li.attachments .collapsible-body");
                 this.attachmentsWidget = new Attachments.AttachmentsWidget(this, {
                     attachments,
                     res_id: this.id,
@@ -281,13 +278,19 @@ odoo.define('scrummer.widget.task', function (require) {
             if (this.isQuickDetailView) {
                 // Add range slider for resizing panels
                 this.trigger_up("init_action_menu", {
-                    items: el => {
-                        var slider = $('<div id="right-slide-controller"><input type="text" name="Right part width" value=""/></div>');
+                    items: (el) => {
+                        const slider = $('<div id="right-slide-controller"><input type="text" name="Right part width" value=""/></div>');
                         slider.appendTo(el);
-                        let values = ["15/85", "30/70", "50/50", "70/30", "85/15"];
-                        var from = 0;
-                        if ($(".slide-wrapper .slide-part")[0].style.flexGrow) {
-                            for (from = 0; !values[from].startsWith(($(".slide-wrapper .slide-part")[0].style.flexGrow).toString()); from++) ;
+                        const values = ["15/85", "30/70", "50/50", "70/30", "85/15"];
+                        let from = 0;
+                        // If slider has previously been resized, flexGrow style willbe set
+                        // Here it is beeing checked which value matches previously set flexGrow
+                        // Default is index 2, which means 50/50 ratio.
+                        const leftFlexGrow = $(".slide-wrapper .slide-part")[0].style.flexGrow;
+                        if (leftFlexGrow) {
+                            while (!values[from].startsWith(leftFlexGrow.toString())) {
+                                from++;
+                            }
                         } else {
                             from = 2;
                         }
@@ -297,21 +300,22 @@ odoo.define('scrummer.widget.task', function (require) {
                             grid: false,
                             hide_min_max: true,
                             hide_from_to: true,
-                            onChange(data) {
-                                $(".slide-wrapper .slide-part")[0].style.flexGrow = parseInt(data.from_value.split("/")[0]);
-                                $(".slide-wrapper .slide-part")[1].style.flexGrow = parseInt(data.from_value.split("/")[1]);
+                            onChange(evtData) {
+                                const parts = evtData.from_value.split("/");
+                                $(".slide-wrapper .slide-part")[0].style.flexGrow = parseInt(parts[0], 10);
+                                $(".slide-wrapper .slide-part")[1].style.flexGrow = parseInt(parts[1], 10);
                             },
                         });
-                        let removeActionMenu = $.Deferred();
+                        const removeActionMenu = $.Deferred();
                         this._destroyed.promise().then(() => {
                             slider.remove();
-                            removeActionMenu.resolve(this)
+                            removeActionMenu.resolve(this);
                         });
                         return removeActionMenu.promise();
                     }
                 });
-                this.$(".task-key").click(e => {
-                    var taskId = $(e.currentTarget).attr("task-id");
+                this.$(".task-key").click((e) => {
+                    const taskId = $(e.currentTarget).attr("task-id");
                     hash_service.setHash("task", taskId, false);
                     hash_service.setHash("view", "task", false);
                     hash_service.setHash("page", "board");
@@ -324,12 +328,12 @@ odoo.define('scrummer.widget.task', function (require) {
             });
             // Make fields updateable
             this.$(".we").on('click', function () {
-                var input = $('<input />', {
+                const input = $('<input />', {
                     'type': 'text',
                     'name': 'unique',
                     'value': $(this).find('span').html()
                 });
-                var saveDiscardSpan = $('<span class="we-save-discard"><i class="mdi mdi-check"></i><i class="mdi mdi-close"></i></span>');
+                const saveDiscardSpan = $('<span class="we-save-discard"><i class="mdi mdi-check"></i><i class="mdi mdi-close"></i></span>');
                 $(this).empty().append(input).append(saveDiscardSpan);
                 input.focus();
                 input.blur(function () {
@@ -368,7 +372,7 @@ odoo.define('scrummer.widget.task', function (require) {
         },
         saveDescription() {
             this.stopEditing(false);
-            var description = this.$('.materialnote').code();
+            const description = this.$('.materialnote').code();
             this._model.description = description;
             this.$('.materialnote').destroy();
             this.$("#task-description .btn-edit").show();
@@ -400,34 +404,34 @@ odoo.define('scrummer.widget.task', function (require) {
             this._model.user_id = false;
         },
         _onEditItemClick() {
-            let newItemModal = new AgileModals.NewItemModal(this, {
+            const newItemModal = new AgileModals.NewItemModal(this, {
                 currentProjectId: this._model.project_id[0],
                 edit: this._model,
             });
             newItemModal.appendTo($("body"));
         },
         _onAddSubItemClick() {
-            var newItemModal = new AgileModals.NewItemModal(this, {
+            const newItemModal = new AgileModals.NewItemModal(this, {
                 currentProjectId: this._model.project_id[0],
                 parent_id: this._model.id,
             });
             newItemModal.appendTo($("body"));
         },
         _onAddLinkClick() {
-            var modal = new AgileModals.LinkItemModal(this, {
+            const modal = new AgileModals.LinkItemModal(this, {
                 task: this._model,
             });
             modal.appendTo($("body"));
         },
         _onWorkLogClick() {
-            var modal = new AgileModals.WorkLogModal(this, {
+            const modal = new AgileModals.WorkLogModal(this, {
                 task: this._model,
                 userId: data.session.uid,
             });
             modal.appendTo($("body"));
         },
         _onAddCommentClick() {
-            var modal = new AgileModals.CommentItemModal(this, {
+            const modal = new AgileModals.CommentItemModal(this, {
                 task: this._model,
             });
             modal.appendTo($("body"));
@@ -437,11 +441,11 @@ odoo.define('scrummer.widget.task', function (require) {
                 this._model.unlink();
             });
         },
-        _onAttachmentUploadStarted(){
+        _onAttachmentUploadStarted() {
             this.startEditing();
         },
-        _onAttachmentUploadFinished(){
-            this.data_service.updateRecord([this.id]).then(()=>this.stopEditing());
+        _onAttachmentUploadFinished() {
+            this.data_service.updateRecord([this.id]).then(() => this.stopEditing());
         }
     });
 

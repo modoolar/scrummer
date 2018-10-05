@@ -19,7 +19,7 @@ odoo.define('scrummer.app_cache', function (require) {
         resolve() {
             this._require_obj("params", ["model"]);
             data.session.rpc("/scrummer/model/info", {model_name: this.params.model})
-                .then(model => {
+                .then((model) => {
                     model.fields_list = Object.keys(model.fields);
                     this.deferred.resolve(model);
                 }, this.deferred.reject);
@@ -38,8 +38,8 @@ odoo.define('scrummer.app_cache', function (require) {
             $.when(this.cache.get("default_task_type_id"),
                 DataServiceFactory.get("project.task.priority").getAllRecords(true),
                 DataServiceFactory.get("project.task.type2").getAllRecords(true)).then((taskTypeId, priorities, types) => {
-                let result = [];
-                types.get(taskTypeId).priority_ids.forEach(p_id => result.push(priorities.get(p_id)));
+                const result = [];
+                types.get(taskTypeId).priority_ids.forEach((p_id) => result.push(priorities.get(p_id)));
                 this.deferred.resolve(result);
             });
         }
@@ -49,8 +49,8 @@ odoo.define('scrummer.app_cache', function (require) {
             $.when(this.cache.get("default_task_type_id"),
                 DataServiceFactory.get("project.task.priority").getAllRecords(true),
                 DataServiceFactory.get("project.task.type2").getAllRecords(true)).then((taskTypeId, priorities, types) => {
-                let result = [];
-                types.get(taskTypeId).priority_ids.forEach(p_id => result.push(priorities.get(p_id)));
+                const result = [];
+                types.get(taskTypeId).priority_ids.forEach((p_id) => result.push(priorities.get(p_id)));
                 this.deferred.resolve(result);
             });
         }
@@ -58,12 +58,12 @@ odoo.define('scrummer.app_cache', function (require) {
     data.cache.add("project.workflow", DependencyCache.AbstractDependency.extend({
         resolve() {
             this._require_obj("params", ["id"]);
-            data.session.rpc(`/scrummer/web/data/workflow/${this.params.id}`).then(workflow => {
+            data.session.rpc(`/scrummer/web/data/workflow/${this.params.id}`).then((workflow) => {
                 // Create map with stage_id -> workflow state_id
                 workflow.stageToState = {};
-                for (let state_id in workflow.states) {
-                    let state = workflow.states[state_id];
-                    workflow.stageToState[state.stage_id] = state_id
+                for (const state_id in workflow.states) {
+                    const state = workflow.states[state_id];
+                    workflow.stageToState[state.stage_id] = state_id;
                 }
                 this.deferred.resolve(workflow);
             });
@@ -74,11 +74,11 @@ odoo.define('scrummer.app_cache', function (require) {
             this._require_obj("params", ["id"]);
             this.getDataSet("project.project").read_slice(["name", "board_ids"], {
                 domain: [['id', '=', this.params.id]]
-            }).then(data => {
-                let project = data[0];
+            }).then((response) => {
+                const project = response[0];
                 // Get id of first board available on project
                 this.deferred.resolve(project.board_ids[0]);
-            })
+            });
         }
     }));
     data.cache.add("projects_in_board", DependencyCache.AbstractDependency.extend({
@@ -87,15 +87,13 @@ odoo.define('scrummer.app_cache', function (require) {
             this._require_obj("params", ["team_id"]);
 
             this.getDataSet("project.project").read_slice(["name"], {
-                domain: this.cache.get("current_user").then(user => {
-                    return [
-                        ["board_ids", "=", this.params.id],
-                        ["id", "in", user.team_ids[this.params.team_id].project_ids],
-                    ]
-                })
-            }).then(projects => {
-                let map = new Map();
-                projects.forEach(project => map.set(project.id, project));
+                domain: this.cache.get("current_user").then((user) => [
+                    ["board_ids", "=", this.params.id],
+                    ["id", "in", user.team_ids[this.params.team_id].project_ids],
+                ])
+            }).then((projects) => {
+                const map = new Map();
+                projects.forEach((project) => map.set(project.id, project));
                 this.deferred.resolve(map);
             });
 
@@ -104,14 +102,14 @@ odoo.define('scrummer.app_cache', function (require) {
     data.cache.add("team_members", DependencyCache.AbstractDependency.extend({
         resolve() {
             this._require_obj("params", ["teamId"]);
-            DataServiceFactory.get("project.agile.team").getRecord(this.params.teamId).then(team=>{
+            DataServiceFactory.get("project.agile.team").getRecord(this.params.teamId).then((team) => {
                 DataServiceFactory.get("res.users").getRecords(team.member_ids).then(this.deferred.resolve, this.deferred.reject);
             });
         }
     }));
     data.cache.add("current_user", DependencyCache.AbstractDependency.extend({
         resolve() {
-            data.session.rpc("/scrummer/session_user").then(user => {
+            data.session.rpc("/scrummer/session_user").then((user) => {
                 user.imageUrl = data.getImage("res.users", user.id, user.write_date);
                 this.deferred.resolve(user);
             }, this.deferred.reject);
@@ -121,27 +119,30 @@ odoo.define('scrummer.app_cache', function (require) {
         resolve() {
             this._require_obj("params", ["id"]);
 
-            function cacheMiss() {
-                this.cache.get("model_info", {model: 'res.users'}).then(model => {
-                    this.getDataSet(model.name).read_ids([this.params.id], model.fields_list).then(result => {
-                        let user = result[0];
-                        this.deferred.resolve(user);
-                    }, this.deferred.reject);
-                });
-            }
+            const cacheMiss = () => {
+                this.cache.get("model_info", {model: 'res.users'})
+                    .then((model) => {
+                        this.getDataSet(model.name)
+                            .read_ids([this.params.id], model.fields_list)
+                            .then((result) => {
+                                const user = result[0];
+                                this.deferred.resolve(user);
+                            }, this.deferred.reject);
+                    });
+            };
 
-            this.cache.get("current_user").then(user => {
+            this.cache.get("current_user").then((session_user) => {
                 // Current user doesn't have team
-                if (!Array.isArray(user.team_id)) {
-                    cacheMiss.apply(this);
+                if (!Array.isArray(session_user.team_id)) {
+                    cacheMiss();
                 }
-                this.cache.get("team_members", {teamId: user.team_id[0]}).then(members => {
+                this.cache.get("team_members", {teamId: session_user.team_id[0]}).then((members) => {
                     // First check team_members, otherwise
-                    let user = members.find(e => e.id == this.params.id);
+                    const user = members.find((e) => e.id === this.params.id);
                     if (user) {
                         this.deferred.resolve(user);
                     } else {
-                        cacheMiss.apply(this);
+                        cacheMiss();
                     }
                 });
             });
@@ -150,9 +151,9 @@ odoo.define('scrummer.app_cache', function (require) {
     data.cache.add("get_message_subtypes", DependencyCache.AbstractDependency.extend({
         resolve() {
             this._require_obj("params", ["res_model"]);
-            let priorityIdsPromise = this.getDataSet("mail.message.subtype").id_search("", [["res_model", "=", this.params.res_model]]);
-            priorityIdsPromise.then(ids => {
-                DataServiceFactory.get("mail.message.subtype").getRecords(ids).then(records => {
+            const priorityIdsPromise = this.getDataSet("mail.message.subtype").id_search("", [["res_model", "=", this.params.res_model]]);
+            priorityIdsPromise.then((ids) => {
+                DataServiceFactory.get("mail.message.subtype").getRecords(ids).then((records) => {
                     this.deferred.resolve(records);
                 }, this.deferred.reject);
             }, this.deferred.reject);
@@ -160,10 +161,10 @@ odoo.define('scrummer.app_cache', function (require) {
     }));
     data.cache.add("project.task.link.relation.nameOrderMaps", DependencyCache.AbstractDependency.extend({
         resolve() {
-            DataServiceFactory.get("project.task.link.relation").getAllRecords().then(relations => {
-                let nameToOrderMap = new Map();
-                let orderToNameMap = new Map();
-                relations.forEach(relation => {
+            DataServiceFactory.get("project.task.link.relation").getAllRecords().then((relations) => {
+                const nameToOrderMap = new Map();
+                const orderToNameMap = new Map();
+                relations.forEach((relation) => {
                     nameToOrderMap.set(relation.name, relation.sequence);
                     orderToNameMap.set(relation.sequence, relation.name);
                 });

@@ -9,6 +9,7 @@ odoo.define('scrummer.model_list', function (require) {
     const core = require("web.core");
     const _t = core._t;
     const hash_service = require('scrummer.hash_service');
+    const DataServiceFactory = require('scrummer.data_service_factory');
 
     const SimpleTaskItem = AbstractModelList.AbstractModelListItem.extend({
         _name: "SimpleTaskItem",
@@ -20,24 +21,24 @@ odoo.define('scrummer.model_list', function (require) {
             return this.record.user_id ? this.record.user_id[1] : _t("Unassigned");
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => {
+            return $.when(this._super(), data.cache.get("current_user").then((user) => {
                 this.currentUser = user;
-            }), DataServiceFactory.get("project.task.type2").getAllRecords(true).then(task_types => {
+            }), DataServiceFactory.get("project.task.type2").getAllRecords(true).then((task_types) => {
                 if (Number.isInteger(this.record)){
-                    return DataServiceFactory.get("project.task").getRecord(this.record).then(record => {
+                    return DataServiceFactory.get("project.task").getRecord(this.record).then((record) => {
                         this.record = record;
                         this.task_type = task_types.get(this.record.type_id[0]);
                     });
-                } else {
-                    this.task_type = task_types.get(this.record.type_id[0]);
                 }
+                    this.task_type = task_types.get(this.record.type_id[0]);
+
             }));
         },
         start() {
-            this.$(".task-key").click(e => {
+            this.$(".task-key").click((e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                let taskId = $(e.currentTarget).attr("task-id");
+                const taskId = $(e.currentTarget).attr("task-id");
                 hash_service.setHash("task", taskId);
                 hash_service.setHash("view", "task");
                 hash_service.setHash("page", "board");
@@ -66,40 +67,40 @@ odoo.define('scrummer.model_list', function (require) {
         },
 
          willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => {
+            return $.when(this._super(), data.cache.get("current_user").then((user) => {
                 this.currentUser = user;
             }));
         },
         image_url() {
-            return  data.getImage("res.partner", this.record.author_id[0], this.record.author_last_update);
+            return data.getImage("res.partner", this.record.author_id[0], this.record.author_last_update);
         },
         addedToDOM() {
             this._super();
             this.$('.tooltipped').tooltip({delay: 50});
         },
         canEdit() {
-            return this.currentUser.partner_id[0] == this.record.author_id[0];
+            return this.currentUser.partner_id[0] === this.record.author_id[0];
         },
         renderElement() {
             this._super();
-            if (this.record.date != this.record.write_date) {
+            if (this.record.date !== this.record.write_date) {
                 this.setWriteDate();
             }
         },
         setWriteDate() {
             this.$(".activity-item-write-date").remove();
-            let tooltipString = this.record.author_id[1] + _t(" at ") + this.record.write_date;
-            let writeDateNode = $('<span class="activity-item-write-date tooltipped" data-position="bottom" data-delay="50" data-tooltip="' + tooltipString + '"/>');
+            const tooltipString = this.record.author_id[1] + _t(" at ") + this.record.write_date;
+            const writeDateNode = $('<span class="activity-item-write-date tooltipped" data-position="bottom" data-delay="50" data-tooltip="' + tooltipString + '"/>');
             writeDateNode.insertAfter(this.$(".activity-item-date"));
             writeDateNode.tooltip();
         },
         start() {
             this.$(".remove-activity").click(this.remove.bind(this));
             this.$(".edit-activity").click(() => {
-                let modal = new AgileModals.CommentItemModal(this, {
+                const modal = new AgileModals.CommentItemModal(this, {
                     task: this.taskModel,
                     edit: this.record,
-                    afterHook: comment => {
+                    afterHook: (comment) => {
                         Object.assign(this.record, comment);
                         this.$(".activity-body").html(comment.body);
                         this.setWriteDate();

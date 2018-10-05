@@ -4,9 +4,9 @@
 odoo.define('scrummer_kanban.menu_extension', function (require) {
     "use strict";
 
-    var AgileMenu = require('scrummer.menu');
-    var web_core = require('web.core');
-    var _t = web_core._t;
+    const AgileMenu = require('scrummer.menu');
+    const web_core = require('web.core');
+    const _t = web_core._t;
 
     AgileMenu.AgileViewMenu.include({
         build_widget_list() {

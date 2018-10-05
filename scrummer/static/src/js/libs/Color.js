@@ -27,10 +27,10 @@ odoo.define('Color', function (require) {
 
             if (rgba) {
                 rgba.shift();
-            }else if(hex){
+            } else if (hex) {
                 hex.shift();
                 rgba = [];
-                for(let i = 0; i<3;rgba[i] = parseInt(hex[i++], 16));
+                for (let i = 0; i < 3; rgba[i] = parseInt(hex[i++], 16)) ;
             }
             else {
                 throw new Error('Invalid string: ' + rgbaString);

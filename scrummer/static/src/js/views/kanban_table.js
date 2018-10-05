@@ -3,12 +3,13 @@
 
 odoo.define('scrummer.view.kanban_table', function (require) {
     "use strict";
-    const data = require('scrummer.data');
+    const ScrummerData = require('scrummer.data');
     const core = require('scrummer.core');
     const BaseWidgets = require('scrummer.BaseWidgets');
     const TaskWidget = require('scrummer.widget.task').TaskWidget;
     const AgileModals = require('scrummer.widget.modal');
     const storage_service = require('scrummer.storage_service');
+    const hash_service = require('scrummer.hash_service');
     require('sortable');
     const pluralize = require('pluralize');
     const DataServiceFactory = require('scrummer.data_service_factory');
@@ -32,13 +33,16 @@ odoo.define('scrummer.view.kanban_table', function (require) {
     }
 
     class SwimlaneDefinition {
+        /* eslint-disable no-unused-vars*/
         /**
          *
-         * @param kanbanTable - A reference to parent kanbanTable
-         * @param field - Name of field that will be used for grouping cards
-         * @param text - Will be shown in UI select-option when changing swimlane
+         * @param {AbstractKanbanTable} kanbanTable - A reference to parent kanbanTable
+         * @param {String} field - Name of field that will be used for grouping cards
+         * @param {String} text - Will be shown in UI select-option when changing swimlane
+         * @param {String} undefinedHeaderName - String shown for items that have undefined value of field
+         * @param {String} headerTemplate - Qweb template key that should be rendered for swimlane
          */
-        constructor(kanbanTable, field, text, undefinedHeaderName = _t("Undefined"), headerTemplate = "scrummer.kanban_table.swimlane.header.simple") {
+        constructor(kanbanTable, field = null, text, undefinedHeaderName = _t("Undefined"), headerTemplate = "scrummer.kanban_table.swimlane.header.simple") {
             this.kanbanTable = kanbanTable;
             this.field = field;
             this.text = text;
@@ -50,55 +54,52 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         }
 
         /**
-         * Returns concrete value or promise which resolves string/number/undefined that will be used as a group ID for custom grouping of cards in swimlanes.
+         * Returns concrete value or promise which resolves string/number/null that will be used as a group ID for custom grouping of cards in swimlanes.
+         * @param {AbstractCard} card
+         * @returns {*} - value of field by which cards are grouped
          */
         mapper(card) {
-            if (this.field === undefined) {
-                return undefined;
-            } else {
+            if (this.field) {
                 return getFieldId(card, this.field);
             }
+            return null;
         }
 
         compare(x, y) {
-            return x === undefined || x === false ? 1 : y === undefined || y === false ? -1 : x - y;
+            return x === null || x === false ? 1 : y === null || y === false ? -1 : x - y;
         }
 
         /**
          * Returns promise which resolves a dictionary that will be passed to qweb.render - headerTemplate
          * If no swimlane is selected, it should return undefined
-         * @param card
+         * @param {AbstractCard} card
          * @returns {Object}
          */
         header(card) {
             function pluralizedCount() {
-                let count = this.recordCount();
+                const count = this.recordCount();
                 return count + " " + pluralize('issue', count);
             }
 
-            if (this.field === undefined) {
-                return undefined;
+            if (this.field === null) {
+                return null;
             } else if (!card[this.field]) {
                 return {
                     headerData: {name: this.undefinedHeaderName},
-                    pluralizedCount,
-                    afterRender() {
-                    }
-                };
-            } else {
-                return {
-                    headerData: {name: getFieldName(card, this.field)},
-                    pluralizedCount,
-                    afterRender() {
-                    }
+                    pluralizedCount
                 };
             }
+            return {
+                headerData: {name: getFieldName(card, this.field)},
+                pluralizedCount
+            };
+
         }
 
         /**
          * Returns concrete value or promise which resolves boolean wether card should be rendered on table or not.
-         * @param card
-         * @returns {boolean}
+         * @param {AbstractCard} card
+         * @returns {Boolean}
          */
         filter(card) {
             return true;
@@ -107,6 +108,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         /**
          * Should be called before any other method.
          * Initializes arrays/maps/etc. of promises used to enable bulk fetching.
+         * @returns {Boolean}
          */
         begin() {
             return this;
@@ -117,6 +119,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
          * Purpose of this method is to create a batch request for all records external dependencies.
          * Since base SwimlaneDefinition doesn't return any promises, nothing has to be resolved.
          * References to temporary promises, etc. should be deleted so that GC can clean them up
+         * @returns {SwimlaneDefinition}
          */
         resolve() {
             return this;
@@ -161,8 +164,9 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         }
 
         _getParentPromise(id) {
-            if (!this.parentDeferredMap[id])
+            if (!this.parentDeferredMap[id]) {
                 this.parentDeferredMap[id] = new $.Deferred();
+            }
             this.parent_ids.includes(id) || this.parent_ids.push(id);
             return this.parentDeferredMap[id].promise();
         }
@@ -170,49 +174,49 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         mapper(task) {
             super.mapper(task);
             if (!task.parent_id) {
-                return undefined;
+                return null;
             }
-            let parentPromise = this._getParentPromise(task.parent_id[0]);
-            return parentPromise.then(parentTask => {
-                return parentTask.is_user_story ? parentTask.id : undefined;
+            const parentPromise = this._getParentPromise(task.parent_id[0]);
+
+            /* eslint-disable-next-line arrow-body-style*/
+            return parentPromise.then((parentTask) => {
+                return parentTask.is_user_story ? parentTask.id : null;
             });
         }
 
         filter(task) {
             // Don't render user stories that are already shown as a swimlane
-            return !(task.is_user_story && task.child_ids.find(t => this.kanbanTable.data.ids.includes(t)) ? true : false);
+            return Boolean(!(task.is_user_story && task.child_ids.find((t) => this.kanbanTable.data.ids.includes(t))));
         }
 
         header(task) {
             if (!task.parent_id) {
-                let header = super.header(task);
+                const header = super.header(task);
                 header.headerData.name = this.undefinedHeaderName;
                 header._overrideTemplate = "scrummer.kanban_table.swimlane.header.simple";
                 return header;
             }
-            return this._getParentPromise(task.parent_id[0]).then(task => {
-                return {
+            return this._getParentPromise(task.parent_id[0]).then((parentTask) => ({
 
-                    task,
-                    count() {
-                        let count = this.recordCount();
-                        return count + " " + pluralize('sub-task', count);
-                    },
-                    afterRender: element => {
-                        element.find(".task-key").click(() => {
-                            this.kanbanTable.trigger_up("open_task", {id: task.id});
-                        })
+                task: parentTask,
+                count() {
+                    const count = this.recordCount();
+                    return count + " " + pluralize('sub-task', count);
+                },
+                afterRender: (element) => {
+                    element.find(".task-key").click(() => {
+                        this.kanbanTable.trigger_up("open_task", {id: parentTask.id});
+                    });
 
-                    }
+                }
 
-                };
-            });
+            }));
         }
 
         resolve() {
             super.resolve();
-            this.kanbanTable.loadRecords(this.parent_ids).then(records => {
-                for (let record of records) {
+            this.kanbanTable.loadRecords(this.parent_ids).then((records) => {
+                for (const record of records) {
                     this.parentDeferredMap[record.id].resolve(record);
                 }
             });
@@ -220,11 +224,11 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         }
     }
 
-    var AbstractCard = BaseWidgets.AgileBaseWidget.extend(mixins.MenuItemsMixin, {
+    const AbstractCard = BaseWidgets.AgileBaseWidget.extend(mixins.MenuItemsMixin, {
         _name: "AbstractCard",
         template: "scrummer.kanban_table.card",
-        customCardTitle: undefined,
-        customCardFooter: undefined,
+        customCardTitle: null,
+        customCardFooter: null,
         init(parent, options) {
             Object.assign(this, options);
             this._super(parent, options);
@@ -254,7 +258,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return this.$el.index();
         }
     });
-    var TaskCard = AbstractCard.extend({
+    const TaskCard = AbstractCard.extend({
         menuItems: [
             {
                 class: "assign-to-me",
@@ -263,7 +267,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
                 callback: '_onAssignToMeClick',
                 sequence: 1,
                 hidden() {
-                    return this.record.user_id && this.record.user_id[0] == data.session.uid;
+                    return this.record.user_id && this.record.user_id[0] === ScrummerData.session.uid;
                 }
             },
             {
@@ -273,7 +277,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
                 callback: '_onUnassignClick',
                 sequence: 2,
                 hidden() {
-                    return !(this.record.user_id && this.record.user_id[0] == data.session.uid);
+                    return !(this.record.user_id && this.record.user_id[0] === ScrummerData.session.uid);
                 }
             },
             {
@@ -329,13 +333,11 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             this.task = this.record;
         },
         willStart() {
-            return this._super().then(() => {
-                return $.when(data.cache.get("current_user").then(user => data.cache.get("team_members", {teamId: user.team_id[0]})).then(members => {
-                    this.user = members.find(e => this.task.user_id && e.id == this.task.user_id[0]);
-                }), DataServiceFactory.get("project.task.type2").getRecord(this.task.type_id[0]).then(task_type => {
-                    this.task_type = task_type;
-                }))
-            });
+            return this._super().then(() => $.when(ScrummerData.cache.get("current_user").then((user) => ScrummerData.cache.get("team_members", {teamId: user.team_id[0]})).then((members) => {
+                this.user = members.find((e) => this.task.user_id && e.id === this.task.user_id[0]);
+            }), DataServiceFactory.get("project.task.type2").getRecord(this.task.type_id[0]).then((task_type) => {
+                this.task_type = task_type;
+            })));
         },
         start() {
             this.$(".task-key").unbind("click");
@@ -345,46 +347,46 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return this._super();
         },
         image_url() {
-            return this.user ? data.getImage("res.users", this.user.id, this.user.write_date) : "/scrummer/static/img/unassigned.png";
+            return this.user ? ScrummerData.getImage("res.users", this.user.id, this.user.write_date) : "/scrummer/static/img/unassigned.png";
         },
         image_tooltip() {
             return this.user ? this.user.name : _t("Unassigned");
         },
         _onWorkLogClick() {
-            var modal = new AgileModals.WorkLogModal(this.getParent(), {
+            const modal = new AgileModals.WorkLogModal(this.getParent(), {
                 task: this.task,
-                userId: data.session.uid
+                userId: ScrummerData.session.uid
             });
             modal.appendTo($("body"));
         },
         _onAddLinkClick() {
-            var modal = new AgileModals.LinkItemModal(this.getParent(), {
+            const modal = new AgileModals.LinkItemModal(this.getParent(), {
                 task: this.task,
             });
             modal.appendTo($("body"));
         },
         _onAddCommentClick() {
-            var modal = new AgileModals.CommentItemModal(this.getParent(), {
+            const modal = new AgileModals.CommentItemModal(this.getParent(), {
                 task: this.task,
             });
             modal.appendTo($("body"));
         },
         _onAddSubItemClick() {
-            var newItemModal = new AgileModals.NewItemModal(this.getParent(), {
+            const newItemModal = new AgileModals.NewItemModal(this.getParent(), {
                 currentProjectId: this.task.project_id[0],
                 parent_id: this.task.id,
             });
             newItemModal.appendTo($("body"));
         },
         _onEditItemClick() {
-            let newItemModal = new AgileModals.NewItemModal(this.getParent(), {
+            const newItemModal = new AgileModals.NewItemModal(this.getParent(), {
                 currentProjectId: this.task.project_id[0],
                 edit: this.task,
             });
             newItemModal.appendTo($("body"));
         },
         _onAssignToMeClick() {
-            this.task.user_id = data.session.uid;
+            this.task.user_id = ScrummerData.session.uid;
             // data.cache.get("current_user").then(user => {
             //     this.user = user;
             //     this.renderElement();
@@ -402,10 +404,10 @@ odoo.define('scrummer.view.kanban_table', function (require) {
 
     });
 
-    var AbstractKanbanTable = BaseWidgets.AgileBaseWidget.extend({
+    const AbstractKanbanTable = BaseWidgets.AgileBaseWidget.extend({
         _name: "KanbanTable",
         template: "scrummer.kanban_table",
-        kanbanTableOptionsID: undefined,
+        kanbanTableOptionsID: null,
         init(parent, options) {
             Object.assign(this, options);
             this._super(parent, options);
@@ -492,7 +494,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
 
             // Load current board options from storage service
             this.kanbanOptions = storage_service.get("kto" + this.kanbanTableOptionsID) || {};
-            this.swimlane = this.swimlane || this.kanbanOptions.swimlane;
+            this.swimlane = this.swimlane || this.kanbanOptions.swimlane || null;
 
         },
         /**
@@ -501,42 +503,44 @@ odoo.define('scrummer.view.kanban_table', function (require) {
          */
         initSwimlaneDefinitions() {
             return new Map([
-                [undefined, new SwimlaneDefinition(this, undefined, _t("No swimlanes"))],
-            ])
+                [null, new SwimlaneDefinition(this, null, _t("No swimlanes"))],
+            ]);
         },
         willStart() {
             // Only user result is needed to be assigned to widget.
-            return $.when(data.cache.get("current_user"), this._super.apply(arguments), this.loadRecords(this.data.ids)).then(user => {
+            return $.when(ScrummerData.cache.get("current_user"), this._super.apply(arguments), this.loadRecords(this.data.ids)).then((user) => {
                     this.current_user = user;
                     this.loadData();
                     return this.prepareSwimlaneData();
                 }
-            )
+            );
         },
         /**
          * Wraps dataService.getRecords and saves records in cache for later synchronous use.
-         * @param ids
+         * @param {Number[]} ids
+         * @returns {jQuery.Promise}
          */
         loadRecords(ids) {
-            return this.dataService.getRecords(ids).then(records => {
+            return this.dataService.getRecords(ids).then((records) => {
                 this.records.push.apply(this.records, records);
                 return records;
             });
         },
         /**
          * Wraps dataService.getRecord and saves record in cache for later synchronous use.
-         * @param id
+         * @param {Number} id
+         * @returns {jQuery.Promise}
          */
         loadRecord(id) {
-            return this.dataService.getRecord(id).then(record => {
+            return this.dataService.getRecord(id).then((record) => {
                 this.records.push(record);
                 return record;
             });
         },
         loadData() {
             // Create columns array and sort it by column order
-            let columns_map = this.data.board.columns;
-            this.data.sorted_columns = Object.keys(columns_map).map(key => columns_map[key]).sort((a, b) => a.order - b.order);
+            const columns_map = this.data.board.columns;
+            this.data.sorted_columns = Object.keys(columns_map).map((key) => columns_map[key]).sort((a, b) => a.order - b.order);
             this.states = {};
             this.data.board.stateToStatus = {};
             this.data.workflow.global_states = {
@@ -544,12 +548,10 @@ odoo.define('scrummer.view.kanban_table', function (require) {
                 out: []
             };
             // Assign every state to a column in sorted_columns, map state to status and save global states
-            for (let status_id in this.data.board.status) {
-                let status = this.data.board.status[status_id];
-                let state = this.data.workflow.states[status.state_id];
-                let column = this.data.sorted_columns.find(col => {
-                    return status.column_id == col.id;
-                });
+            for (const status_id in this.data.board.status) {
+                const status = this.data.board.status[status_id];
+                const state = this.data.workflow.states[status.state_id];
+                const column = this.data.sorted_columns.find((col) => status.column_id === col.id);
 
                 state.global_in && this.data.workflow.global_states.in.push(state);
                 state.global_out && this.data.workflow.global_states.out.push(state);
@@ -567,30 +569,30 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             this.renderSwimlanes(this.$(".swimlanes"));
         },
         prepareSwimlaneData() {
-            let swimlaneDefinition = this.swimlanes.get(this.swimlane).begin();
+            const swimlaneDefinition = this.swimlanes.get(this.swimlane).begin();
             this.data.swimlanes = new Map();
 
-            let promises = [];
+            const promises = [];
 
             function recordCount() {
                 return this.records.length;
-            };
-            for (let record_id of this.data.ids) {
-                let record = this.records.find(r => r.id === record_id);
+            }
+
+            for (const record_id of this.data.ids) {
+                const record = this.records.find((r) => r.id === record_id);
                 promises.push($.when(swimlaneDefinition.mapper(record), swimlaneDefinition.filter(record)).then((group, passIt) => {
                     if (passIt) {
                         if (this.data.swimlanes.has(group)) {
                             this.data.swimlanes.get(group).records.push(record);
-                        }
-                        else {
-                            let swimlaneData = {records: [record]};
+                        } else {
+                            const swimlaneData = {records: [record]};
                             this.data.swimlanes.set(group, swimlaneData);
-                            return $.when(swimlaneDefinition.header(record)).then(header => {
+                            return $.when(swimlaneDefinition.header(record)).then((header) => {
                                 if (header) {
                                     header.recordCount = recordCount.bind(swimlaneData);
                                 }
                                 swimlaneData.header = header;
-                            })
+                            });
                         }
                     }
                 }));
@@ -602,45 +604,48 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return this.swimlanes.get(this.swimlane);
         },
         renderHeaders() {
-            let result = [];
-            for (let column of this.data.sorted_columns) {
-                result.push((`<li class="column" data-id="${column.id}">${column.name}</li>`))
+            const result = [];
+            for (const column of this.data.sorted_columns) {
+                result.push(`<li class="column" data-id="${column.id}">${column.name}</li>`);
             }
             return result;
         },
         renderSwimlanes(placeholder) {
-            let result = [];
+            const result = [];
             if (this.data.swimlanes.size < 1) {
                 return;
-            } else if (this.data.swimlanes.size === 1 && [...this.data.swimlanes.keys()][0] === undefined) {
+            } else if (this.data.swimlanes.size === 1 && [...this.data.swimlanes.keys()][0] === null) {
                 this.data.swimlanes.forEach((data, id) => {
                     result.push(this.renderSwimlane(data, id, false, placeholder));
                 });
             } else {
-                let swimlaneDefinition = this.swimlanes.get(this.swimlane)
+                const swimlaneDefinition = this.swimlanes.get(this.swimlane);
 
                 // let sortedSwimlanes = [...this.data.swimlanes.keys()].sort((a, b) => !a ? 1 : -1);
-                let sortedSwimlanes = [...this.data.swimlanes.keys()].sort(swimlaneDefinition.compare);
-                sortedSwimlanes.forEach(id => {
-                    let data = this.data.swimlanes.get(id);
+                const sortedSwimlanes = [...this.data.swimlanes.keys()].sort(swimlaneDefinition.compare);
+                sortedSwimlanes.forEach((id) => {
+                    const data = this.data.swimlanes.get(id);
                     result.push(this.renderSwimlane(data, id, true, placeholder));
                 });
             }
             return result;
         },
         renderSwimlane(data, id, renderHeader = true, placeholder) {
-            let node;
-            let swimlaneDefinition = this.swimlanes.get(this.swimlane);
+            let node = null;
+            const swimlaneDefinition = this.swimlanes.get(this.swimlane);
 
-            if (!renderHeader) { // No swimlane
-                node = $(qweb.render(swimlaneDefinition.swimlaneNoHeaderTemplate).trim());
-            } else { // If swimlane has header, render collapsibles
-
+            if (renderHeader) {
+                // If swimlane has header, render collapsibles
                 node = $(qweb.render(swimlaneDefinition.swimlaneTemplate).trim());
-                let headerTemplate = data.header._overrideTemplate || swimlaneDefinition.headerTemplate;
-                let header = $(qweb.render(headerTemplate, data.header).trim());
+                const headerTemplate = data.header._overrideTemplate || swimlaneDefinition.headerTemplate;
+                const header = $(qweb.render(headerTemplate, data.header).trim());
                 node.find(".collapsible-header").append(header);
-                data.header.afterRender(header);
+                if (typeof data.header.afterRender === "function") {
+                    data.header.afterRender(header);
+                }
+            } else {
+                // No swimlane
+                node = $(qweb.render(swimlaneDefinition.swimlaneNoHeaderTemplate).trim());
             }
 
             node.attr("data-swimlane-id", id);
@@ -648,20 +653,20 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             placeholder.append(node);
 
             // prepare records for columns and render them
-            let recordsByStageFieldId = new Map();
-            data.records.forEach(record => {
-                let recordStageFieldId = this.getStageFieldId(record);
-                recordsByStageFieldId.has(recordStageFieldId) ?
-                    recordsByStageFieldId.get(recordStageFieldId).push(record) :
-                    recordsByStageFieldId.set(recordStageFieldId, [record]);
+            const recordsByStageFieldId = new Map();
+            data.records.forEach((record) => {
+                const recordStageFieldId = this.getStageFieldId(record);
+                recordsByStageFieldId.has(recordStageFieldId)
+                    ? recordsByStageFieldId.get(recordStageFieldId).push(record)
+                    : recordsByStageFieldId.set(recordStageFieldId, [record]);
             });
 
 
-            for (let column of this.data.sorted_columns) {
-                let column_cards = [];
+            for (const column of this.data.sorted_columns) {
+                const column_cards = [];
                 recordsByStageFieldId.forEach((records, stageFieldId) => {
                     // Check if card belongs to column by checking if some status has workflow.state that wraps around records stageFieldId
-                    if (column.status && column.status.some(e => this.data.workflow.states[e.state_id].stage_id == stageFieldId)) {
+                    if (column.status && column.status.some((e) => this.data.workflow.states[e.state_id].stage_id === stageFieldId)) {
                         column_cards.push(...records);
                     }
                 });
@@ -670,49 +675,49 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return node;
         },
         renderColumn(column, records, placeholder) {
-            let swimlaneDefinition = this.swimlanes.get(this.swimlane);
-            let node = $(qweb.render(swimlaneDefinition.columnTemplate, column));
+            const swimlaneDefinition = this.swimlanes.get(this.swimlane);
+            const node = $(qweb.render(swimlaneDefinition.columnTemplate, column));
             placeholder.append(node);
-            let sorted_records = records.sort((a, b) => a.agile_order - b.agile_order);
-            for (let record of sorted_records) {
-                let cardWidget = this.renderCard(record);
+            const sorted_records = records.sort((a, b) => a.agile_order - b.agile_order);
+            for (const record of sorted_records) {
+                const cardWidget = this.renderCard(record);
                 cardWidget.appendTo(node).then(() => {
                     cardWidget.start();
                 });
             }
 
-            var tableThis = this;
+            const tableThis = this;
             node.sortable({
-                start: function (event, ui) {
-                    var cardNode = $(ui.helper);
-                    let swimlaneId = cardNode.getDataFromAncestor("swimlane-id", ".swimlane");
-                    let columnId = cardNode.getDataFromAncestor("column-id");
-                    let cardId = cardNode.getDataFromAncestor("card-id");
+                start: function (evt, data) {
+                    const cardNode = $(data.helper);
+                    const swimlaneId = cardNode.getDataFromAncestor("swimlane-id", ".swimlane");
+                    const columnId = cardNode.getDataFromAncestor("column-id");
+                    const cardId = cardNode.getDataFromAncestor("card-id");
 
-                    this.swimlaneNode = swimlaneId === undefined ?
-                        tableThis.$(`.swimlane:not([data-swimlane-id])`) :
-                        tableThis.$(`.swimlane[data-swimlane-id=${swimlaneId}]`);
+                    this.swimlaneNode = swimlaneId === null
+                        ? tableThis.$(`.swimlane:not([data-swimlane-id])`)
+                        : tableThis.$(`.swimlane[data-swimlane-id=${swimlaneId}]`);
 
                     let preventStopEvent = this.preventStopEvent;
                     // Generate overlays over all other columns except the source column
                     for (let columnNode of $.makeArray(this.swimlaneNode.find(`.column:not([data-column-id=${columnId}])`))) {
                         columnNode = $(columnNode);
-                        let columnNodeId = columnNode.data("column-id");
-                        let columnOverlay = tableThis.generateOverlay(columnNodeId, cardId);
+                        const columnNodeId = columnNode.data("column-id");
+                        const columnOverlay = tableThis.generateOverlay(columnNodeId, cardId);
 
                         // Attach event on drop on each of overlay states
                         columnOverlay.find(".state").on("drop", (event, ui) => {
-                            let cardNode = $(ui.helper);
-                            let cardId = cardNode.data("card-id");
-                            let targetDataset = event.target.dataset;
-                            let newState = tableThis.data.workflow.states[targetDataset["stateId"]];
-                            let newStatus = tableThis.data.board.stateToStatus[newState.id];
-                            let isTransitionGlobal = targetDataset["transitionId"] === "global";
-                            let transition = tableThis.data.workflow.transitions[targetDataset["transitionId"]];
+                            const droppedCardNode = $(ui.helper);
+                            const droppedCardId = droppedCardNode.data("card-id");
+                            const targetDataset = event.target.dataset;
+                            const newState = tableThis.data.workflow.states[targetDataset.stateId];
+                            const newStatus = tableThis.data.board.stateToStatus[newState.id];
+                            const isTransitionGlobal = targetDataset.transitionId === "global";
+                            const transition = tableThis.data.workflow.transitions[targetDataset.transitionId];
 
                             // get cardWidget from table
-                            let cardWidget = tableThis.cardWidgetsMap.get(cardId);
-                            let stage_id = parseInt(newState.stage_id);
+                            const cardWidget = tableThis.cardWidgetsMap.get(droppedCardId);
+                            const stage_id = parseInt(newState.stage_id, 10);
 
                             if (!isTransitionGlobal && transition.user_confirmation) {
                                 tableThis.openStageChangeModal(newState.stage_id, cardWidget);
@@ -741,7 +746,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             if (this.cardWidgetsMap.has(record.id)) {
                 return this.cardWidgetsMap.get(record.id);
             }
-            let cardWidget = new this.Card.Card(this, {record});
+            const cardWidget = new this.Card.Card(this, {record});
             this.cardWidgetsMap.set(record.id, cardWidget);
             return cardWidget;
 
@@ -753,16 +758,16 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return getFieldName(record, this.stageField);
         },
         getWorkflowState(stageFieldId, workflow_id) {
-            for (let state_id in this.data.workflow.states) {
-                let state = this.data.workflow.states[state_id];
+            for (const state_id in this.data.workflow.states) {
+                const state = this.data.workflow.states[state_id];
                 if (state.workflow_id === workflow_id && state[this.stageField] === stageFieldId) {
                     return state;
                 }
             }
         },
         getColumnFromStageField(stageFieldId) {
-            for (let column of this.data.sorted_columns) {
-                for (let status of column.status) {
+            for (const column of this.data.sorted_columns) {
+                for (const status of column.status) {
                     if (this.data.workflow.states[status.state_id].stage_id === stageFieldId) {
                         return column;
                     }
@@ -770,20 +775,20 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             }
         },
         generateOverlay: function (columnId, recordId) {
-            let record = this.records.find(r => r.id === recordId);
-            let stageFieldId = this.getStageFieldId(record);
+            const record = this.records.find((r) => r.id === recordId);
+            const stageFieldId = this.getStageFieldId(record);
 
-            let currentState = this.getWorkflowState(stageFieldId, record.workflow_id[0]);
-            let availableTransitions = this.getAvailableTransitions(currentState, this.data.workflow, record);
+            const currentState = this.getWorkflowState(stageFieldId, record.workflow_id[0]);
+            const availableTransitions = this.getAvailableTransitions(currentState, this.data.workflow, record);
 
-            var overlay = $(`<div class="column-overlay" data-column-id="${columnId}"></div>`);
+            const overlay = $(`<div class="column-overlay" data-column-id="${columnId}"></div>`);
 
             if (this.data.board.columns[columnId].status) {
-                for (let status of this.data.board.columns[columnId].status) {
-                    let state = this.data.workflow.states[status.state_id];
-                    let transition = availableTransitions.find(t => t.dst == state.id);
+                for (const status of this.data.board.columns[columnId].status) {
+                    const state = this.data.workflow.states[status.state_id];
+                    const transition = availableTransitions.find((t) => t.dst === state.id);
                     if (transition) {
-                        let stateNode = $(`<div class="state agile-main-color lighten-5" data-state-id="${state.id}" data-transition-id="${transition.id}">${state.name}</div>`);
+                        const stateNode = $(`<div class="state agile-main-color lighten-5" data-state-id="${state.id}" data-transition-id="${transition.id}">${state.name}</div>`);
                         stateNode.droppable({
                             classes: {"ui-droppable-hover": "hover"},
                         });
@@ -796,16 +801,16 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         getAvailableTransitions(currentState, workflow) {
             // Duplicate transitions won't be rendered multiple times, so don't worry
             // This case can happen, if there is in/out transition and state is global in/our
-            let transitions = currentState.out_transitions.map(t_id => workflow.transitions[t_id]);
+            const transitions = currentState.out_transitions.map((t_id) => workflow.transitions[t_id]);
             if (currentState.global_out) {
-                for (let state_id in workflow.states) {
-                    let state = workflow.states[state_id];
+                for (const state_id in workflow.states) {
+                    const state = workflow.states[state_id];
                     if (state.id !== currentState.id && state.workflow_id === currentState.workflow_id) {
                         transitions.push(this.generateFakeTransition(workflow, currentState, state));
                     }
                 }
             } else {
-                workflow.global_states.in.filter(state => state.id != currentState.id && state.workflow_id === currentState.workflow_id).forEach(state => {
+                workflow.global_states.in.filter((state) => state.id !== currentState.id && state.workflow_id === currentState.workflow_id).forEach((state) => {
                     transitions.push(this.generateFakeTransition(workflow, currentState, state));
                 });
             }
@@ -820,16 +825,16 @@ odoo.define('scrummer.view.kanban_table', function (require) {
                 src: src.id,
                 user_confirmation: false,
                 workflow_id: workflow.id
-            }
+            };
         },
         openStageChangeModal(newStageId, cardWidget, confirmedCallback) {
-            let state = this.getWorkflowState(newStageId, cardWidget.record.workflow_id[0]);
-            var modal = new AgileModals.TaskStageConfirmationModal(this, {
+            const state = this.getWorkflowState(newStageId, cardWidget.record.workflow_id[0]);
+            const modal = new AgileModals.TaskStageConfirmationModal(this, {
                 taskId: cardWidget.record.id,
                 stageId: newStageId,
                 stageName: state.name,
                 userName: cardWidget.record.user_id ? cardWidget.record.user_id[1] : _t("Unassigned"),
-                afterHook: result => {
+                afterHook: (result) => {
                     typeof confirmedCallback === "function" && confirmedCallback(result);
                 }
             });
@@ -849,37 +854,37 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return true;
         },
         _doAddCard(id, syncerMeta, highlight, index) {
-            return this.dataService.getRecord(id).then(record => {
+            return this.dataService.getRecord(id).then((record) => {
                 if (record && this.shouldCardBeAdded(record)) {
-                    let swimlaneDefinition = this.swimlanes.get(this.swimlane).begin();
-                    let def = $.when(swimlaneDefinition.mapper(record), swimlaneDefinition.filter(record)).then((group, passIt) => {
+                    const swimlaneDefinition = this.swimlanes.get(this.swimlane).begin();
+                    const def = $.when(swimlaneDefinition.mapper(record), swimlaneDefinition.filter(record)).then((group, passIt) => {
                         if (passIt) {
                             if (this.data.swimlanes.has(group)) {
                                 this.data.swimlanes.get(group).records.push(record);
-                                let column = this.getColumnFromStageField(this.getStageFieldId(record));
+                                const column = this.getColumnFromStageField(this.getStageFieldId(record));
                                 if (!column) {
                                     return;
                                 }
-                                var node = group === undefined ?
-                                    this.$(`.swimlane:not([data-swimlane-id]) ${" "} div[data-column-id="${column.id}"]`) :
-                                    this.$(`.swimlane[data-swimlane-id=${group}] ${" "} div[data-column-id="${column.id}"]`);
-                                let cardWidget = this.renderCard(record);
+                                const node = group === null
+                                    ? this.$(`.swimlane:not([data-swimlane-id]) ${" "} div[data-column-id="${column.id}"]`)
+                                    : this.$(`.swimlane[data-swimlane-id=${group}] ${" "} div[data-column-id="${column.id}"]`);
+                                const cardWidget = this.renderCard(record);
 
                                 if (index > INDEX_NOT_FOUND) {
                                     cardWidget.insertAt(node, index).then(() => {
                                         cardWidget.start();
                                     });
-                                    ;
+
                                 } else {
                                     cardWidget.appendTo(node).then(() => {
                                         cardWidget.start();
                                     });
-                                    ;
+
                                 }
-                                let swimlaneNode = group === undefined ?
-                                    this.$('.swimlane:not([data-swimlane-id])') :
-                                    this.$(`.swimlane[data-swimlane-id=${group}]`);
-                                let count = this.data.swimlanes.get(group).records.length;
+                                const swimlaneNode = group === null
+                                    ? this.$('.swimlane:not([data-swimlane-id])')
+                                    : this.$(`.swimlane[data-swimlane-id=${group}]`);
+                                const count = this.data.swimlanes.get(group).records.length;
                                 swimlaneNode.find(".swimlane-header .count").text(count + " " + pluralize('issue', count));
 
                                 if (syncerMeta.indirect === false) {
@@ -888,40 +893,39 @@ odoo.define('scrummer.view.kanban_table', function (require) {
                                         highlight && cardWidget.$el.highlight();
                                     });
                                 }
-                            }
-                            else {  // If destination swimlane doesn't exist then render it with new card and append in view
-                                let swimlaneData = {records: [record]};
+                            } else {
+                                // If destination swimlane doesn't exist then render it with new card and append in view
+                                const swimlaneData = {records: [record]};
                                 this.data.swimlanes.set(group, swimlaneData);
 
-                                let recordCount = function () {
+                                const recordCount = function () {
                                     return this.records.length;
                                 };
-                                return $.when(swimlaneDefinition.header(record)).then(header => {
+                                return $.when(swimlaneDefinition.header(record)).then((header) => {
                                     if (header) {
                                         header.recordCount = recordCount.bind(swimlaneData);
                                     }
                                     swimlaneData.header = header;
                                     // If last swimlane is undefined, then insert new swimlane before it, otherwize insert swimlane after it.
-                                    let lastSwimlane = this.$(".swimlane").last();
-                                    let newSwimlaneNode = this.renderSwimlane(swimlaneData, group, !!header, lastSwimlane);
+                                    const lastSwimlane = this.$(".swimlane").last();
+                                    const newSwimlaneNode = this.renderSwimlane(swimlaneData, group, Boolean(header), lastSwimlane);
                                     if (this.$(".swimlane").length === 0) {
-                                        this.$(".swimlanes").append(newSwimlaneNode)
-                                    } else if (lastSwimlane.data("swimlane-id") !== undefined) {
+                                        this.$(".swimlanes").append(newSwimlaneNode);
+                                    } else if (lastSwimlane.data("swimlane-id")) {
 
-                                        let sortedSwimlanes = [...this.data.swimlanes.keys()].sort(swimlaneDefinition.compare);
-                                        let index = sortedSwimlanes.indexOf(group);
+                                        const sortedSwimlanes = [...this.data.swimlanes.keys()].sort(swimlaneDefinition.compare);
+                                        const i = sortedSwimlanes.indexOf(group);
 
-                                        this.$(".swimlanes").insertAt(newSwimlaneNode, index);
-                                        //newSwimlaneNode.insertAfter(lastSwimlane);
+                                        this.$(".swimlanes").insertAt(newSwimlaneNode, i);
                                     } else {
-                                        newSwimlaneNode.insertBefore(lastSwimlane)
+                                        newSwimlaneNode.insertBefore(lastSwimlane);
                                     }
                                     // Enable collapsing in new swimlane
                                     newSwimlaneNode.find('.collapsible').collapsible();
-                                })
+                                });
                             }
                             if (syncerMeta) {
-                                if (syncerMeta.user_id.id !== data.session.uid && syncerMeta.indirect === false) {
+                                if (syncerMeta.user_id.id !== ScrummerData.session.uid && syncerMeta.indirect === false) {
                                     AgileToast.toastTask(syncerMeta.user_id, record, syncerMeta.method);
                                 }
                             }
@@ -934,37 +938,37 @@ odoo.define('scrummer.view.kanban_table', function (require) {
 
         },
         removeCard(id, removeFromCache = false, syncerMeta) {
-            let cardWidget = this.cardWidgetsMap.get(id);
+            const cardWidget = this.cardWidgetsMap.get(id);
             if (!cardWidget) {
                 return false;
             }
             if (removeFromCache) {
-                let swimlaneDefinition = this.swimlanes.get(this.swimlane).begin();
-                let previousMapped = cardWidget.record._previous ? swimlaneDefinition.mapper(cardWidget.record._previous) : null;
+                const swimlaneDefinition = this.swimlanes.get(this.swimlane).begin();
+                const previousMapped = cardWidget.record._previous ? swimlaneDefinition.mapper(cardWidget.record._previous) : null;
                 $.when(previousMapped, swimlaneDefinition.mapper(cardWidget.record), swimlaneDefinition.filter(cardWidget.record)).then((previousGroup, group, passIt) => {
                     if (previousGroup !== null) {
-                        let swimlaneData = this.data.swimlanes.get(previousGroup);
-                        swimlaneData.records = swimlaneData.records.filter(e => e.id !== cardWidget.record.id);
-                        let swimlaneNode = previousGroup === undefined ?
-                            this.$('.swimlane:not([data-swimlane-id])') :
-                            this.$(`.swimlane[data-swimlane-id=${previousGroup}]`);
+                        const swimlaneData = this.data.swimlanes.get(previousGroup);
+                        swimlaneData.records = swimlaneData.records.filter((e) => e.id !== cardWidget.record.id);
+                        const swimlaneNode = previousGroup === null
+                            ? this.$('.swimlane:not([data-swimlane-id])')
+                            : this.$(`.swimlane[data-swimlane-id=${previousGroup}]`);
                         if (swimlaneData.records.length === 0) {
                             this.data.swimlanes.delete(previousGroup);
                             swimlaneNode.remove();
                         } else {
-                            let count = swimlaneData.records.length;
+                            const count = swimlaneData.records.length;
                             swimlaneNode.find(".swimlane-header .count").text(count + " " + pluralize('issue', count));
                         }
                     }
                 });
 
                 cardWidget.destroy();
-                this.cardWidgetsMap.delete(id)
+                this.cardWidgetsMap.delete(id);
             } else {
                 cardWidget.$el.detach();
             }
             if (syncerMeta) {
-                if (syncerMeta.user_id.id !== data.session.uid && syncerMeta.indirect === false) {
+                if (syncerMeta.user_id.id !== ScrummerData.session.uid && syncerMeta.indirect === false) {
                     AgileToast.toastTask(syncerMeta.user_id, syncerMeta.data, syncerMeta.method);
                 }
             }
@@ -974,7 +978,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
          * Usually from <model>[this.stageField] and workflow,
          * but if there is related field on model, it can be returned also.
          *
-         * @param {number} id - ID of record under the card.
+         * @param {Number} id - ID of record under the card.
          */
         getCardState(id) {
             throw new Error("Not implemented");
@@ -995,7 +999,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             this.$('.collapsible').collapsible();
         }
     });
-    var TaskTable = AbstractKanbanTable.extend({
+    const TaskTable = AbstractKanbanTable.extend({
         Card: {Card: TaskCard},
         dataService: task_service,
         stageField: "stage_id",
@@ -1006,7 +1010,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             }
         },
         initSwimlaneDefinitions() {
-            let defs = this._super();
+            const defs = this._super();
             defs.set('user_id', new SwimlaneDefinition(this, 'user_id', _t("Assignee"), _t("Unassigned")));
             defs.set('priority_id', new SwimlaneDefinition(this, 'priority_id', _t("Priority"), _t("Without priority")));
             defs.set('project_id', new SwimlaneDefinition(this, 'project_id', _t("Project"), _t("Without project")));
@@ -1016,7 +1020,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         },
         loadData() {
             this._super();
-            this.board_project_ids = Object.keys(this.data.board.projects).map(k => parseInt(k));
+            this.board_project_ids = Object.keys(this.data.board.projects).map((k) => parseInt(k, 10));
         },
         getCardState(id) {
             return this.cardWidgetsMap.get(id).task.wkf_state_id;
@@ -1024,16 +1028,24 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         shouldCardBeAdded(task) {
 
             // Filter tasks by project filters
-            let team_project_ids = this.current_user.team_ids[this.current_user.team_id[0]].project_ids;
-            let hash_project_id = parseInt(hash_service.get("project"));
-            let task_project_id = task.project_id[0];
+            const team_project_ids = this.current_user.team_ids[this.current_user.team_id[0]].project_ids;
+            const hash_project_id = parseInt(hash_service.get("project"), 10);
+            const task_project_id = task.project_id[0];
 
-            if (hash_project_id && task_project_id !== hash_project_id) return false;
-            if (!team_project_ids.includes(task_project_id)) return false;
-            if (!this.board_project_ids.includes(task_project_id)) return false;
+            if (hash_project_id && task_project_id !== hash_project_id) {
+                return false;
+            }
+            if (!team_project_ids.includes(task_project_id)) {
+                return false;
+            }
+            if (!this.board_project_ids.includes(task_project_id)) {
+                return false;
+            }
 
             // Filter task by task_types filter
-            if (this.data.board.task_types.length && !this.data.board.task_types.includes(task.type_id[0])) return false;
+            if (this.data.board.task_types.length && !this.data.board.task_types.includes(task.type_id[0])) {
+                return false;
+            }
 
             // todo Map task (stage_id, workflow_id) to Wkf State and then check if the state is mapped to any of the columns in the board
             // todo Check if stage_id is in this.data.workflow.states (but create stageToState map when loading)
@@ -1041,41 +1053,48 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return true;
         },
         resolveCardIndex(id, delta) {
-            let card = this.cardWidgetsMap.get(id);
-            if (!card) return INDEX_NOT_FOUND;
+            const card = this.cardWidgetsMap.get(id);
+            if (!card) {
+                return INDEX_NOT_FOUND;
+            }
 
-            let swimlane = this.getActiveSwimlane();
-            let swimlane_field = swimlane.field === undefined ? false :
-                swimlane.field === 'story' ? 'parent_id' : swimlane.field;
+            const swimlane = this.getActiveSwimlane();
+            const swimlane_field = swimlane.field === null ? false
+                : swimlane.field === 'story' ? 'parent_id' : swimlane.field;
 
-            let isUpdated = function (fieldName) {
-                if (!(fieldName in delta)) return false;
-                let left = getFieldId(delta[fieldName]);
-                let right = fieldName in card.record._previous ? getFieldId(card.record._previous[fieldName]) : false;
-                return left != right;
-            }.bind(this);
+            const isUpdated = function (fieldName) {
+                if (!(fieldName in delta)) {
+                    return false;
+                }
+                const left = getFieldId(delta[fieldName]);
+                const right = fieldName in card.record._previous ? getFieldId(card.record._previous[fieldName]) : false;
+                return left !== right;
+            };
 
-            let isUpdatedStageField = function () {
+            const isUpdatedStageField = function () {
                 return isUpdated(this.stageField);
             }.bind(this);
 
 
             // When there is no swimlane we need to see if the stage is updated
-            if (swimlane_field === undefined)
+            if (swimlane_field === null) {
                 return isUpdatedStageField();
+            }
 
             // Check if the current swimlane field is updated
-            if (isUpdated(swimlane.field))
+            if (isUpdated(swimlane.field)) {
                 return INDEX_NOT_FOUND;
+            }
 
-            if (isUpdatedStageField())
+            if (isUpdatedStageField()) {
                 return INDEX_NOT_FOUND;
+            }
 
             return card.index();
         },
     });
 
-    var AbstractKanbanTableView = BaseWidgets.AgileViewWidget.extend({
+    const AbstractKanbanTableView = BaseWidgets.AgileViewWidget.extend({
         _name: "KanbanTableView",
         template: "scrummer.view.kanban_table",
         emptyTitle: _t("No data in kanban table"),
@@ -1091,7 +1110,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             if (this.kanbanTable.swimlane) {
                 this.$("#modal-settings select").val(this.kanbanTable.swimlane).material_select();
             }
-            let modalNode = this.$("#modal-settings");
+            const modalNode = this.$("#modal-settings");
             modalNode.materialModal("open");
         },
         destroy() {
@@ -1110,7 +1129,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return _t("Kanban table");
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => {
+            return $.when(this._super(), ScrummerData.cache.get("current_user").then((user) => {
                 this.user = user;
             }));
         },
@@ -1118,7 +1137,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             // Handling case when there is no data, and empty template should be rendered
             if (this.isEmpty()) {
                 this.setTitle(this.emptyTitle);
-            } else{
+            } else {
                 this.title = this.getTitle();
             }
             this._super();
@@ -1139,21 +1158,21 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return {data: this.data};
         },
         renderSettingsModal() {
-            let swimlanes = [];
-            for (let [key, obj] of this.kanbanTable.swimlanes.entries()) {
+            const swimlanes = [];
+            for (const [key, obj] of this.kanbanTable.swimlanes.entries()) {
                 swimlanes.push({value: key, text: obj.text});
             }
             return qweb.render("scrummer.view.kanban_table.settings_modal", {swimlanes});
         },
         _getSwimlaneOptions() {
-            return this.kanbanTable.swimlanes
+            return this.kanbanTable.swimlanes;
         },
         getActionMenu() {
             return {
                 items: [
                     {icon: "settings", action: this.openSettings.bind(this)}
                 ]
-            }
+            };
         },
         start() {
             this._is_added_to_DOM.then(() => {
@@ -1161,9 +1180,9 @@ odoo.define('scrummer.view.kanban_table', function (require) {
                 //this.$('.section').perfectScrollbar({suppressScrollY: true});
             });
 
-            let modalNode = this.$("#modal-settings");
+            const modalNode = this.$("#modal-settings");
             // On save button click check if form has been modified, and if so update options, and store them to storage_service
-            this.$("#modal-settings .modal-save").click(evt => {
+            this.$("#modal-settings .modal-save").click((evt) => {
                 if (this.kanbanTable.swimlane !== this.$("#modal-settings select :selected").attr("value")) {
                     this.kanbanTable.swimlane = this.$("#modal-settings select :selected").attr("value");
                     this.kanbanTable.setSwimlane(this.kanbanTable.swimlane);
@@ -1174,7 +1193,7 @@ odoo.define('scrummer.view.kanban_table', function (require) {
             return this._super();
         }
     });
-    var TaskKanbanTableView = AbstractKanbanTableView.extend({
+    const TaskKanbanTableView = AbstractKanbanTableView.extend({
         custom_events: Object.assign({}, AbstractKanbanTableView.prototype.custom_events, {
             open_task: "_onOpenTask",
         }),
@@ -1192,12 +1211,12 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         },
         _onProjectTaskWrite(id, delta, payload, record) {
             if (!this.kanbanTable) {
-                return
+                return;
             }
 
-            let editPromise = record && record._edit("check") ? record._edit() : $.when();
+            const editPromise = record && record._edit("check") ? record._edit() : $.when();
             editPromise.then(() => {
-                let cardIndex = this.kanbanTable.resolveCardIndex(id, delta);
+                const cardIndex = this.kanbanTable.resolveCardIndex(id, delta);
                 this.kanbanTable.removeCard(id, true);
                 return this.kanbanTable.insertCardAt(id, cardIndex, payload).then(() => {
                     if (this.rightSideWidget && this.rightSideWidget.id === id) {
@@ -1214,14 +1233,14 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         },
         _onProjectTaskCreate(id, vals, payload) {
             if (!this.kanbanTable) {
-                return
+                return;
             }
 
             this.kanbanTable.addCard(id, payload);
         },
         _onProjectTaskUnlink(id, payload) {
             if (!this.kanbanTable) {
-                return
+                return;
             }
 
             this.kanbanTable.removeCard(id, true, payload);
@@ -1243,5 +1262,5 @@ odoo.define('scrummer.view.kanban_table', function (require) {
         SwimlaneDefinition,
         AsyncSwimlaneDefinition,
         StorySwimlaneDefinition,
-    }
+    };
 });

@@ -5,14 +5,13 @@ odoo.define('scrummer.subheader', ['scrummer.BaseWidgets'], function (require) {
     "use strict";
     const AgileBaseWidgets = require('scrummer.BaseWidgets');
 
-    let SubheaderWidget = AgileBaseWidgets.AgileBaseWidget.extend({
+    const SubheaderWidget = AgileBaseWidgets.AgileBaseWidget.extend({
         _name: "SubheaderWidget",
         template: "scrummer.subheader",
         setTitle(title){
             if(typeof title === "string"){
                 this.$(".view-title").html(`<div class="text-only">${title}</div>`);
-            }
-            else if(title instanceof jQuery){
+            } else if(title instanceof jQuery){
                 this.$(".view-title").empty().append(title);
             }
         }

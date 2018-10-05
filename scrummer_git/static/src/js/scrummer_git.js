@@ -7,21 +7,6 @@ odoo.define("scrummer_git", function (require) {
     const ModalWidget = require('scrummer.widget.modal').ModalWidget;
     const session = require('web.session');
 
-    TaskWidget.include({
-        start() {
-            $("#show_commits").click(() => {
-                session.rpc(`/scrummer/git/${this.id}/commits`).then(commits => {
-                    var modal = new CommitsModal(this, {commits});
-                    modal.appendTo($("body"));
-                });
-
-            });
-
-            return this._super();
-        }
-    });
-
-
     const CommitsModal = ModalWidget.extend({
         template: "scrummer.widget.modal.show_commits",
         init(parent, options) {
@@ -34,7 +19,21 @@ odoo.define("scrummer_git", function (require) {
         }
     });
 
+    TaskWidget.include({
+        start() {
+            $("#show_commits").click(() => {
+                session.rpc(`/scrummer/git/${this.id}/commits`).then((commits) => {
+                    const modal = new CommitsModal(this, {commits});
+                    modal.appendTo($("body"));
+                });
+
+            });
+
+            return this._super();
+        }
+    });
+
     return {
         CommitsModal
-    }
+    };
 });

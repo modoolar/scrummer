@@ -5,6 +5,7 @@ odoo.define('scrummer.page_manager', function (require) {
     "use strict";
 
     const web_core = require('web.core');
+    const ScrummerData = require('scrummer.data');
     const _t = web_core._t;
     const core = require('scrummer.core');
     const bus = core.bus;
@@ -12,8 +13,6 @@ odoo.define('scrummer.page_manager', function (require) {
     const AgileBaseWidget = require('scrummer.BaseWidgets').AgileBaseWidget;
     const DashboardPage = require('scrummer.page.dashboard').DashboardPage;
     const BoardPage = require('scrummer.page.board');
-
-    const qweb = core.qweb;
 
     // Key is used to define what string should be used in hash_service for ViewManager
     const PageManager = AgileBaseWidget.extend({
@@ -32,23 +31,23 @@ odoo.define('scrummer.page_manager', function (require) {
 
         instantiate_views() {
             //Subscribe to view change event on hash service
-            hash_service.on("change:" + this.key, this, (hash_service, options) => this.set_view(options.newValue));
+            hash_service.on("change:" + this.key, this, (options) => this.set_view(options.newValue));
         },
 
         renderElement() {
             this._super();
             this.$el.prepend($("<div id='middle-offset'/>"));
             // set default view if none is set
-            if (!hash_service.get(this.key)) {
-                hash_service.setHash(this.key, this.defaultView, false);
-            } else {
+            if (hash_service.get(this.key)) {
                 this.set_view(hash_service.get(this.key));
+            } else {
+                hash_service.setHash(this.key, this.defaultView, false);
             }
         },
         set_view(view_name, options = {}) {
             if (this.view_registry.get(view_name)) {
                 this.current_view = view_name;
-                let ViewWidget = this.view_registry.get(view_name);
+                const ViewWidget = this.view_registry.get(view_name);
 
                 // Checking if ViewWidget is AgileBaseWidget subclass,
                 // I've been able to identify that it is subclass of root OdooClass
@@ -74,12 +73,12 @@ odoo.define('scrummer.page_manager', function (require) {
             this.set_view(this.current_view, options);
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => {
+            return $.when(this._super(), ScrummerData.cache.get("current_user").then((user) => {
                 this.user = user;
             }));
         },
         start() {
-            bus.on('team:changed', null, team_id => {
+            bus.on('team:changed', null, () => {
                 this.set_view("dashboard");
             });
             return this._super();
@@ -94,6 +93,6 @@ odoo.define('scrummer.page_manager', function (require) {
         }
     });
 
-    return PageManager
+    return PageManager;
 
 });

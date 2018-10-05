@@ -5,15 +5,17 @@ odoo.define('scrummer_scrum.view.active_sprint', function (require) {
     "use strict";
     const KanbanTable = require('scrummer.view.kanban_table');
     const ViewManager = require('scrummer.view_manager');
-    const DataServiceFactory = require('scrummer.data_service_factory');
+    const hash_service = require('scrummer.hash_service');
+    const ScrummerData = require('scrummer.data');
     const core = require('web.core');
     const _t = core._t;
     const AgileToast = require('scrummer.toast');
 
     const SprintTaskTable = KanbanTable.TaskTable.extend({
         shouldCardBeAdded(task, checkForSprint = true) {
-            if (checkForSprint && (!task.sprint_id || Object.keys(this.data.active_sprints)[0] != task.sprint_id[0]))
+            if (checkForSprint && (!task.sprint_id || Object.keys(this.data.active_sprints)[0] !== task.sprint_id[0])) {
                 return false;
+            }
             return this._super(task);
         }
     });
@@ -26,17 +28,17 @@ odoo.define('scrummer_scrum.view.active_sprint', function (require) {
             this._super(parent, options);
 
             // Getting board_id from hash and fetch all project_ids from that board in order to create filter for fetching projects
-            this.boardId = parseInt(hash_service.get("board"));
-            this.projectId = parseInt(hash_service.get("project"));
+            this.boardId = parseInt(hash_service.get("board"), 10);
+            this.projectId = parseInt(hash_service.get("project"), 10);
 
             window.as = this;
         },
         willStart() {
-            let options = {};
+            const options = {};
             if (this.projectId) {
                 options.project_id = this.projectId;
             }
-            return $.when(this._super(), data.session.rpc(`/scrummer/web/data/active_sprints/${this.boardId}`, options))
+            return $.when(this._super(), ScrummerData.session.rpc(`/scrummer/web/data/active_sprints/${this.boardId}`, options))
                 .then((dummy, r) => {
                     this.data = r;
                     if (this.isEmpty()) {
@@ -45,7 +47,7 @@ odoo.define('scrummer_scrum.view.active_sprint', function (require) {
                 });
         },
         isEmpty() {
-            return !Object.keys(this.data.active_sprints).length
+            return !Object.keys(this.data.active_sprints).length;
         },
         getTitle() {
             return this.data.active_sprints[Object.keys(this.data.active_sprints)[0]].name;
@@ -58,16 +60,18 @@ odoo.define('scrummer_scrum.view.active_sprint', function (require) {
         _onProjectTaskWrite(id, delta, payload, task) {
             this._super(id, delta, payload, task);
 
-            if (!this.kanbanTable){
-                return
+            if (!this.kanbanTable) {
+                return;
             }
 
             if (delta.sprint_id === false) {
-                if (!this.kanbanTable.shouldCardBeAdded(task, false)) return;
-                if (task._previous && task._previous.sprint_id && Object.keys(this.data.active_sprints)[0] == task._previous.sprint_id[0]) {
+                if (!this.kanbanTable.shouldCardBeAdded(task, false)) {
+                    return;
+                }
+                if (task._previous && task._previous.sprint_id && Object.keys(this.data.active_sprints)[0] === task._previous.sprint_id[0]) {
 
-                    let toastContent = $('<div class="toast-content"><p><span class="toast-user-name">' + this.user.name + '</span> removed ' + task.priority_id[1] + ' ' + task.type_id[1] + ' <span class="toast-task-name">' + task.key + ' - ' + task.name + '</span> from active sprint</p></div>');
-                    AgileToast.toast(toastContent, data.getImage("res.users", this.user.id, this.user.__last_update), {
+                    const toastContent = $('<div class="toast-content"><p><span class="toast-user-name">' + this.user.name + '</span> removed ' + task.priority_id[1] + ' ' + task.type_id[1] + ' <span class="toast-task-name">' + task.key + ' - ' + task.name + '</span> from active sprint</p></div>');
+                    AgileToast.toast(toastContent, ScrummerData.getImage("res.users", this.user.id, this.user.__last_update), {
                         text: "open", callback: () => {
                             hash_service.set("task", task.id);
                             hash_service.set("view", "task");

@@ -5,24 +5,25 @@ odoo.define(function (require) {
 
     const AgileModals = require('scrummer.widget.modal');
     const Many2One = require('scrummer.widget.many2one').Many2One;
+    const ScrummerData = require('scrummer.data');
     const DataServiceFactory = require('scrummer.data_service_factory');
     const TaskWidget = require('scrummer.widget.task').TaskWidget;
     const TimeSheetListItem = require('scrummer.widget.task').TimeSheetListItem;
 
     TimeSheetListItem.include({
-        updateWorklog(worklog){
+        updateWorklog(worklog) {
             this._super(worklog);
-            this.$(".is-billable").text(this.record.billable == 'yes' ? 'Yes' : 'No');
+            this.$(".is-billable").text(this.record.billable === 'yes' ? 'Yes' : 'No');
         },
     });
 
     TaskWidget.include({
-        start(){
+        start() {
             this._super();
 
             // Apply security rules
-            data.session.user_has_group("project_timesheet_category.group_timesheet_billable").then(function(result) {
-                if (!result){
+            ScrummerData.session.user_has_group("project_timesheet_category.group_timesheet_billable").then(function (result) {
+                if (!result) {
                     this.$('.is-billable').hide();
                 }
             }.bind(this));
@@ -30,15 +31,15 @@ odoo.define(function (require) {
     });
 
     AgileModals.WorkLogModal.include({
-        start(){
-            let self = this;
+        start() {
+            const self = this;
 
             this.category = new Many2One(this, {
                 label: _("Timesheet category"),
                 model: "project.timesheet.category",
                 field_name: "category_id",
                 changeHandler(evt) {
-                    DataServiceFactory.get("project.timesheet.category").getRecord(parseInt(evt.target.value)).then(record => {
+                    DataServiceFactory.get("project.timesheet.category").getRecord(parseInt(evt.target.value, 10)).then((record) => {
                         self.timesheetCategoryChanged(record, false);
                     });
                 },
@@ -49,13 +50,13 @@ odoo.define(function (require) {
             });
             this.category.insertAfter(this.$("#category_anchor"));
 
-            this.getUsersDefaultTimesheetCategory().then(categ => {
-               self.timesheetCategoryChanged(categ, true);
+            this.getUsersDefaultTimesheetCategory().then((categ) => {
+                self.timesheetCategoryChanged(categ, true);
             });
 
-             // Apply security rules
-            data.session.user_has_group("project_timesheet_category.group_timesheet_billable").then(function(result){
-                if (!result){
+            // Apply security rules
+            ScrummerData.session.user_has_group("project_timesheet_category.group_timesheet_billable").then(function (result) {
+                if (!result) {
                     this.$('.is-billable').hide();
                 }
             }.bind(this));
@@ -65,25 +66,25 @@ odoo.define(function (require) {
 
         loadData(worklog) {
             this._super(worklog);
-            worklog.billable = this.is_billable()
+            worklog.billable = this.is_billable();
         },
 
-        populateFieldValues(){
+        populateFieldValues() {
             this._super();
-            this.$('#is-billable-check').prop("checked", this.edit.billable == "yes");
+            this.$('#is-billable-check').prop("checked", this.edit.billable === "yes");
         },
 
         getUsersDefaultTimesheetCategory() {
-            return data.cache.get("current_user").then(user => {
-                if (user.default_timesheet_category_id){
-                    return DataServiceFactory.get("project.timesheet.category").getAllRecords(true).then(categs => {
-                        let categ = categs.get(user.default_timesheet_category_id[0]);
+            return ScrummerData.cache.get("current_user").then((user) => {
+                if (user.default_timesheet_category_id) {
+                    return DataServiceFactory.get("project.timesheet.category").getAllRecords(true).then((categs) => {
+                        const categ = categs.get(user.default_timesheet_category_id[0]);
                         return categ;
-                    })
+                    });
 
-                } else {
-                    return undefined;
                 }
+                return null;
+
 
                 // return user.default_timesheet_category_id ? {
                 //     id: user.default_timesheet_category_id[0],
@@ -92,20 +93,20 @@ odoo.define(function (require) {
             });
         },
 
-        is_billable(){
+        is_billable() {
             return this.$('#is-billable-check').prop("checked") ? 'yes' : 'no';
         },
 
         timesheetCategoryChanged(category, is_default) {
             // let shouldAssign = category && (!this.edit || (this.edit && !is_default));
 
-            if (category){
+            if (category) {
 
                 if (!this.edit || !is_default) {
-                    this.$('#is-billable-check').prop('checked', category.billable == 'yes');
+                    this.$('#is-billable-check').prop('checked', category.billable === 'yes');
                     // this.$('#is-billable-check').prop('checked', category.billable == 'yes');
                 } else {
-                    this.$('#is-billable-check').prop('checked', this.edit.billable == 'yes');
+                    this.$('#is-billable-check').prop('checked', this.edit.billable === 'yes');
                     // this.$('#is-billable-check').prop('checked', this.edit.billable == 'yes');
                 }
             }

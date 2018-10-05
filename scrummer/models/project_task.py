@@ -187,7 +187,6 @@ class Task(models.Model):
         scrummer=True
     )
     type_scrummer_icon = fields.Char(
-        string='Type Scrummer Icon',
         related="type_id.scrummer_icon",
         scrummer=True,
     )
@@ -199,13 +198,11 @@ class Task(models.Model):
     )
 
     priority_scrummer_icon = fields.Char(
-        string='Priority Scrummer Icon',
         related="priority_id.scrummer_icon",
         scrummer=True,
     )
 
     priority_scrummer_icon_color = fields.Char(
-        string='Priority Scrummer Icon Color',
         related="priority_id.scrummer_icon_color",
         scrummer=True,
     )

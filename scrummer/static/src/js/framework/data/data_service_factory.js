@@ -6,15 +6,15 @@ odoo.define('scrummer.data_service_factory', function (require) {
     const DataService = require('scrummer.DataService');
 
     // Registry of custom implementations of DataService. If not defined, standard DataService will be generated.
-    let custom_registry = new Map();
-    let cached_data_services = new Map();
+    const custom_registry = new Map();
+    const cached_data_services = new Map();
 
-    let DataServiceFactory = {
+    const DataServiceFactory = {
         custom_registry,
         get(modelName, readonly) {
             if (!cached_data_services.has(modelName)) {
-                let DataServiceClass = custom_registry.has(modelName) ? custom_registry.get(modelName) : DataService;
-                let newDataServiceInstance = new DataServiceClass({model: modelName});
+                const DataServiceClass = custom_registry.has(modelName) ? custom_registry.get(modelName) : DataService;
+                const newDataServiceInstance = new DataServiceClass({model: modelName});
                 newDataServiceInstance.setReadonly(readonly);
                 cached_data_services.set(modelName, newDataServiceInstance);
             }

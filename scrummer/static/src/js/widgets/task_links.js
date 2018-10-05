@@ -3,12 +3,12 @@
 
 odoo.define('scrummer.widget.task.links', function (require) {
     "use strict";
-    var data = require('scrummer.data');
-    var ModelList = require('scrummer.model_list');
-    var AbstractModelList = require('scrummer.abstract_model_list');
-    var BaseWidgets = require('scrummer.BaseWidgets');
+    const ScrummerData = require('scrummer.data');
+    const ModelList = require('scrummer.model_list');
+    const AbstractModelList = require('scrummer.abstract_model_list');
+    const BaseWidgets = require('scrummer.BaseWidgets');
 
-    let LinkGroupWidget = BaseWidgets.AgileBaseWidget.extend({
+    const LinkGroupWidget = BaseWidgets.AgileBaseWidget.extend({
         template: "scrummer.task.link.group",
         _name: "LinkGroupWidget",
         init(parent, options) {
@@ -21,9 +21,6 @@ odoo.define('scrummer.widget.task.links', function (require) {
                 ModelItem: ModelList.SimpleTaskItem,
                 itemExtensions: {
                     template: "scrummer.task.task_widget_task_item",
-                    remove: function (e) {
-                        let id = $(e.target).getDataFromAncestor("linkId");
-                    }
                 },
                 _name: "Link Group Widget",
                 data: this.links,
@@ -39,16 +36,16 @@ odoo.define('scrummer.widget.task.links', function (require) {
             return this.taskLinkList.addItem(link.related_task, {"data-link-id": link.id});
         },
         removeLink(id) {
-            let link = this.links.find(link => link.id == id);
+            const link = this.links.find((l) => l.id === id);
             if (!link) {
                 return false;
             }
-            this.links = this.links.filter(link => link.id != id);
-            data.getDataSet("project.task.link").unlink([link.id])
+            this.links = this.links.filter((l) => l.id !== id);
+            ScrummerData.getDataSet("project.task.link").unlink([link.id]);
         }
     });
 
-    var TaskLinks = BaseWidgets.AgileBaseWidget.extend({
+    const TaskLinks = BaseWidgets.AgileBaseWidget.extend({
         _name: "TaskLinks",
         init(parent, options) {
             this._super(parent, options);
@@ -58,12 +55,12 @@ odoo.define('scrummer.widget.task.links', function (require) {
         willStart() {
             return this._super().then(() => {
                 // Get all links
-                let linksPromise = data.getTaskLinks(this.task_id)
-                    .then(links => {
+                const linksPromise = ScrummerData.getTaskLinks(this.task_id)
+                    .then((links) => {
                         this.links = links;
                     });
                 // Get relation name to order map;
-                let relationsPromise = data.cache.get("project.task.link.relation.nameOrderMaps")
+                const relationsPromise = ScrummerData.cache.get("project.task.link.relation.nameOrderMaps")
                     .then((nameToOrderMap, orderToNameMap) => {
                         this.nameToOrderMap = nameToOrderMap;
                         this.orderToNameMap = orderToNameMap;
@@ -75,9 +72,9 @@ odoo.define('scrummer.widget.task.links', function (require) {
             this._super();
             this.groups = window.groups = new Map();
             // render empty lists
-            for (let relationOrder of [...this.orderToNameMap.keys()].sort()) {
-                let relation = this.orderToNameMap.get(relationOrder);
-                let linkGroup = new LinkGroupWidget(this, {
+            for (const relationOrder of [...this.orderToNameMap.keys()].sort()) {
+                const relation = this.orderToNameMap.get(relationOrder);
+                const linkGroup = new LinkGroupWidget(this, {
                     relation,
                     links: []
                 });
@@ -85,7 +82,7 @@ odoo.define('scrummer.widget.task.links', function (require) {
                 linkGroup.appendTo(this.$el);
                 linkGroup.$el.hide();
             }
-            for (let link of this.links) {
+            for (const link of this.links) {
                 this.addLink(link, false);
             }
         },
@@ -94,7 +91,7 @@ odoo.define('scrummer.widget.task.links', function (require) {
             if (addToList) {
                 this.links.push(link);
             }
-            let linkGroup = this.groups.get(link.relation_name);
+            const linkGroup = this.groups.get(link.relation_name);
             linkGroup.$el.show();
             return linkGroup.addLink(link);
 

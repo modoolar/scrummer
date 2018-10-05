@@ -3,10 +3,11 @@
 
 odoo.define('scrummer.header', function (require) {
     "use strict";
-    var AgileBaseWidgets = require('scrummer.BaseWidgets');
-    var AgileMenu = require('scrummer.menu');
-    var data = require('scrummer.data');
-    var bus = require('scrummer.core').bus;
+    const AgileBaseWidgets = require('scrummer.BaseWidgets');
+    const AgileMenu = require('scrummer.menu');
+    const data = require('scrummer.data');
+    const bus = require('scrummer.core').bus;
+    const hash_service = require('scrummer.hash_service');
     const HeaderWidget = AgileBaseWidgets.AgileBaseWidget.extend({
         template: "scrummer.layout.header",
         _name: "HeaderWidget",
@@ -14,7 +15,7 @@ odoo.define('scrummer.header', function (require) {
             "click .team-option": "_onTeamOptionClick"
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => {
+            return $.when(this._super(), data.cache.get("current_user").then((user) => {
                 this.user = user;
             }));
         },
@@ -26,7 +27,7 @@ odoo.define('scrummer.header', function (require) {
         },
         addedToDOM() {
             this._super();
-            this.$('.notification-button').dropdown({
+            this.$('.notification-button').dropdown({ /* eslint-disable no-inline-comments*/
                 inDuration: 300,
                 outDuration: 225,
                 constrain_width: false, // Does not change width of dropdown to that of the activator
@@ -66,10 +67,10 @@ odoo.define('scrummer.header', function (require) {
             bus.on("search:show", this, (keydownEvent, callback) => {
                 this.$(".nav-wrapper").addClass("with-search");
                 $(".nav-search > div").show();
-                let searchInput = $(".nav-search input");
+                const searchInput = $(".nav-search input");
                 searchInput.keydown(function (evt) {
                     clearTimeout(this.searchDelayTimeout);
-                    if (evt.keyCode == 13) {
+                    if (evt.keyCode === 13) {
                         keydownEvent($(this));
                     } else {
                         this.searchDelayTimeout = setTimeout(() => {
@@ -77,8 +78,8 @@ odoo.define('scrummer.header', function (require) {
                         }, 1000);
                     }
                 });
-                if (typeof callback == "function") {
-                    callback(searchInput);
+                if (typeof callback === "function") {
+                    return callback(searchInput);
                 }
             });
             bus.on("search:remove", this, () => {
@@ -89,7 +90,7 @@ odoo.define('scrummer.header', function (require) {
             this.$(".search-button").click(() => {
                 this.$(".nav-wrapper").toggleClass("search-open");
             });
-            this.$(".back-to-odoo").click(e => {
+            this.$(".back-to-odoo").click((e) => {
                 e.preventDefault();
                 let href = "/web";
                 href += data.session.debug ? "?debug=" + data.session.debug : "";
@@ -98,8 +99,8 @@ odoo.define('scrummer.header', function (require) {
             return this._super();
         },
         _onTeamOptionClick(e) {
-            let team_id = $(e.currentTarget).getDataFromAncestor("id");
-            let team = this.user.team_ids[team_id];
+            const team_id = $(e.currentTarget).getDataFromAncestor("id");
+            const team = this.user.team_ids[team_id];
             if (this.user.team_id[0] !== team.id) {
                 this.user.team_id[0] = team.id;
                 this.$(".team-name").html(team.name);
@@ -109,11 +110,11 @@ odoo.define('scrummer.header', function (require) {
 
                 data.getDataSet("res.users").call('change_team', [[data.session.uid], team.id]).then(() => {
                     bus.trigger("team:changed", team.id);
-                })
+                });
             }
         },
     });
     return {
         HeaderWidget
-    }
+    };
 });

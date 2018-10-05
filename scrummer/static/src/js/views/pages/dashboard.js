@@ -14,68 +14,10 @@ odoo.define('scrummer.page.dashboard', function (require) {
     const pluralize = require('pluralize');
     const ActivityStream = require('scrummer.activity_stream').ActivityStream;
 
-    const DashboardPage = AgileBaseWidgets.AgileViewWidget.extend({
-        title: _t("Dashboard"),
-        _name: "Dashboard",
-        template: "scrummer.page.dashboard",
-        // Disable floating actions button
-        menuItemsContainer: false,
-        init(parent, options) {
-            this._super(parent, options);
-        },
-        start() {
-            let allTasks = $("<a class='list-header-right'>Team backlog</a>");
-            this.$("#project-list").parent().find("div.list-title").append(allTasks);
-            allTasks.click(() => {
-                hash_service.delete("project");
-                hash_service.setHash("page", "board");
-            });
-            this.projectList._is_added_to_DOM.then(() => {
-                this.$('.list-preloader.projects').remove();
-            });
-            this.trigger_up('menu.removed');
-        },
-        renderElement() {
-            this._super();
-            this.projectList = new AbstractModelList.ModelList(this, {
-                model: "project.project",
-                emptyPlaceholder: $(qweb.render("scrummer.dashboard.project-list.empty", {})),
-                fields: [
-                    "name",
-                    "image_key",
-                    "user_id",
-                    "key",
-                    "state",
-                    "partner_id",
-                    "todo_estimation",
-                    "in_progress_estimation",
-                    "done_estimation",
-                    "__last_update"
-                ],
-                domain: $.when(data.cache.get("current_user"))
-                    .then(user => [["id", "in", user.team_ids[user.team_id[0]].project_ids], ["workflow_id", "!=", false]]),
-                ModelItem: ProjectItem
-            });
-            this.projectList.appendTo(this.$("#project-list"));
-
-            this.assignedToMeList = new AssignedToMe(this);
-            this.assignedToMeList.appendTo(this.$("#assigned-to-me"));
-
-            this.activityStream = new ActivityStream(this, {
-                showMessageName: true,
-                withShadow: true,
-                listTitle: _t("Activity Stream"),
-            });
-            this.activityStream.appendTo(this.$("#activity-stream"));
-
-            this.subheader = new SubheaderWidget(this);
-            this.subheader.appendTo(this.$("#subheader-wrapper"));
-        },
-    });
     const AssignedToMeMenuItem = ModelList.SimpleTaskItem.extend({
         start() {
             this.$(".task-menu").hide();
-            this.$(".task-key").click(e => {
+            this.$(".task-key").click(() => {
                 hash_service.setHash("project", this.record.project_id[0]);
             });
             return this._super();
@@ -125,10 +67,10 @@ odoo.define('scrummer.page.dashboard', function (require) {
             this._super();
             this.assignedToMeList.appendTo(this.$el);
             this.assignedToMeList._is_rendered.then(() => {
-                let items = this.assignedToMeList.data;
+                const items = this.assignedToMeList.data;
                 this.$(".list-preloader").remove();
                 this.$(".list-count").text(items.length + " " + pluralize('issue', items.length));
-                for (let task of items) {
+                for (const task of items) {
                     this.estimates[task.wkf_state_type] += task.story_points;
                 }
                 this.$(".estimates .estimate.todo").html(this.estimates.todo);
@@ -162,6 +104,65 @@ odoo.define('scrummer.page.dashboard', function (require) {
         }
     });
     ProjectItem.sort_by = "agile_order";
+
+    const DashboardPage = AgileBaseWidgets.AgileViewWidget.extend({
+        title: _t("Dashboard"),
+        _name: "Dashboard",
+        template: "scrummer.page.dashboard",
+        // Disable floating actions button
+        menuItemsContainer: false,
+        init(parent, options) {
+            this._super(parent, options);
+        },
+        start() {
+            const allTasks = $("<a class='list-header-right'>Team backlog</a>");
+            this.$("#project-list").parent().find("div.list-title").append(allTasks);
+            allTasks.click(() => {
+                hash_service.delete("project");
+                hash_service.setHash("page", "board");
+            });
+            this.projectList._is_added_to_DOM.then(() => {
+                this.$('.list-preloader.projects').remove();
+            });
+            this.trigger_up('menu.removed');
+        },
+        renderElement() {
+            this._super();
+            this.projectList = new AbstractModelList.ModelList(this, {
+                model: "project.project",
+                emptyPlaceholder: $(qweb.render("scrummer.dashboard.project-list.empty", {})),
+                fields: [
+                    "name",
+                    "image_key",
+                    "user_id",
+                    "key",
+                    "state",
+                    "partner_id",
+                    "todo_estimation",
+                    "in_progress_estimation",
+                    "done_estimation",
+                    "__last_update"
+                ],
+                domain: $.when(data.cache.get("current_user"))
+                    .then((user) => [["id", "in", user.team_ids[user.team_id[0]].project_ids], ["workflow_id", "!=", false]]),
+                ModelItem: ProjectItem
+            });
+            this.projectList.appendTo(this.$("#project-list"));
+
+            this.assignedToMeList = new AssignedToMe(this);
+            this.assignedToMeList.appendTo(this.$("#assigned-to-me"));
+
+            this.activityStream = new ActivityStream(this, {
+                showMessageName: true,
+                withShadow: true,
+                listTitle: _t("Activity Stream"),
+            });
+            this.activityStream.appendTo(this.$("#activity-stream"));
+
+            this.subheader = new SubheaderWidget(this);
+            this.subheader.appendTo(this.$("#subheader-wrapper"));
+        },
+    });
 
     return {
         DashboardPage,

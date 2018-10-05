@@ -21,7 +21,7 @@ odoo.define('scrummer.view_manager', function (require) {
             init_action_menu: function (evt) {
                 this.initActionMenu(evt.data.items);
             },
-            rerender_view: function (evt) {
+            rerender_view: function () {
                 this.rerender_view();
             }
         },
@@ -38,9 +38,9 @@ odoo.define('scrummer.view_manager', function (require) {
 
         instantiate_views() {
             //Subscribe to view change event on hash service
-            hash_service.on("change:" + this.key, this, (hash_service, options) => options.newValue && this.set_view(options.newValue));
+            hash_service.on("change:" + this.key, this, (options) => options.newValue && this.set_view(options.newValue));
             // Setting view will render it again, so when board is changed, load same view for that board.
-            hash_service.on("change:board", this, (hash_service, options) => options.newValue && this.set_view(hash_service.get("view")));
+            hash_service.on("change:board", this, (options) => options.newValue && this.set_view(hash_service.get("view")));
         },
         register_events() {
             this.on("loading:start", this, () => {
@@ -55,10 +55,10 @@ odoo.define('scrummer.view_manager', function (require) {
         renderElement() {
             this._super();
             // set default view if none is set
-            if (!hash_service.get(this.key)) {
-                hash_service.setHash(this.key, this.defaultView, false);
-            } else {
+            if (hash_service.get(this.key)) {
                 this.set_view(hash_service.get(this.key));
+            } else {
+                hash_service.setHash(this.key, this.defaultView, false);
             }
             this.subheader = new SubheaderWidget(this);
             this.subheader.appendTo(this.$("#subheader-wrapper"));
@@ -66,7 +66,7 @@ odoo.define('scrummer.view_manager', function (require) {
         set_view(view_name) {
             if (this.view_registry.get(view_name)) {
                 this.current_view = view_name;
-                let ViewWidget = this.view_registry.get(view_name);
+                const ViewWidget = this.view_registry.get(view_name);
 
                 // Checking if ViewWidget is AgileBaseWidget subclass,
                 // I've been able to identify that it is subclass of root OdooClass
@@ -74,10 +74,10 @@ odoo.define('scrummer.view_manager', function (require) {
                 if (!ViewWidget.toString().includes("OdooClass")) {
                     throw new Error("Widget does not exist");
                 }
-
+                let old = null;
                 // if current widget property is set, and has destroy method, call it to destroy widget.
                 if (this.widget && typeof this.widget.destroy === "function") {
-                    var old = this.widget;
+                    old = this.widget;
                     this.removeActionMenu();
                     // TODO: Remove this hack
                     if (typeof this.widget.removeNavSearch === "function") {
@@ -115,23 +115,23 @@ odoo.define('scrummer.view_manager', function (require) {
          * @callback actionCallback
          *
          * @param {Object[]} menuItems Array of menu items
-         * @param {string} menuItems[].icon - Class of Material Design Icon (without dot)
-         * @param {string} menuItems[].title - Text to be displayed in button
+         * @param {String} menuItems[].icon - Class of Material Design Icon (without dot)
+         * @param {String} menuItems[].title - Text to be displayed in button
          * @param {actionCallback} menuItems[].action - Callback to run when button is clicked.
          */
         initActionMenu(menuItems) {
             if (jQuery.isFunction(menuItems)) {
-                let callback = menuItems;
-                var el = $("<div/>");
+                const callback = menuItems;
+                const el = $("<div/>");
                 el.appendTo(this.$(".actions-menu"));
-
-                let actionMenuPromise = callback(el);
+                /* eslint-disable-next-line callback-return*/
+                const actionMenuPromise = callback(el);
                 if (jQuery.isFunction(actionMenuPromise.promise)) {
                     actionMenuPromise.always((widget) => {
-                        if (widget == this.widget) {
+                        if (widget === this.widget) {
                             this.$(".actions-menu").empty();
                         }
-                    })
+                    });
                 } else {
                     throw new Error("openRightSide callback should return promise");
                 }
@@ -140,11 +140,11 @@ odoo.define('scrummer.view_manager', function (require) {
             if (!Array.isArray(menuItems)) {
                 throw new Error("menuItems must be an array");
             }
-            for (let item of menuItems) {
+            for (const item of menuItems) {
                 if (item.widget && item.widget.__AGILE_BASE_WIDGET) {
                     item.widget.appendTo(this.$(".actions-menu"));
                 } else {
-                    let node = $('<a class="btn-floating btn-large btn-flat waves-effect"></a>');
+                    const node = $('<a class="btn-floating btn-large btn-flat waves-effect"></a>');
                     let html = "";
                     if (item.icon) {
                         html += "<i class='mdi mdi-" + item.icon + " large'></i>";
@@ -161,8 +161,8 @@ odoo.define('scrummer.view_manager', function (require) {
             this.$(".actions-menu").empty();
         },
         _onSetTitle(evt) {
-            this._is_rendered.then(()=>{
-               this.subheader.setTitle(evt.data.title);
+            this._is_rendered.then(() => {
+                this.subheader.setTitle(evt.data.title);
             });
         }
     });

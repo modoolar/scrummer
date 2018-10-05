@@ -17,9 +17,9 @@ odoo.define('scrummer_kanban.view.task', function (require) {
                 callback: '_onAssignToClick',
                 sequence: 2.5,
                 hidden() {
-                    let taskWidget = this.taskWidget;
+                    const taskWidget = this.taskWidget;
                     return taskWidget.data_service.getRecord(taskWidget.id)
-                        .then(task => task.project_agile_method != "kanban");
+                        .then((task) => task.project_agile_method !== "kanban");
                 }
             },
         ]),
@@ -29,6 +29,6 @@ odoo.define('scrummer_kanban.view.task', function (require) {
             });
             modal.appendTo($("body"));
         }
-    })
+    });
 
 });

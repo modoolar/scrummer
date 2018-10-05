@@ -1,0 +1,20 @@
+{
+    "globals": {
+    "$": false,
+    "_": false,
+    "jQuery": false,
+    "moment": false,
+    "odoo": false,
+    "openerp": false,
+    "self": false
+  },
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  "rules": {},
+  "parserOptions": {
+    "ecmaVersion": 2018
+  },
+  "root": true
+}

@@ -1,11 +1,13 @@
 // Copyright 2017 - 2018 Modoolar <info@modoolar.com>
 // License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
 
-odoo.define('scrummer.widget.many2one', require => {
+odoo.define('scrummer.widget.many2one', (require) => {
     "use strict";
     const data = require('scrummer.data');
     const BaseWidgets = require('scrummer.BaseWidgets');
-    let Many2One = BaseWidgets.AgileBaseWidget.extend({
+    const Materialize = window.Materialize;
+
+    const Many2One = BaseWidgets.AgileBaseWidget.extend({
         template: "scrummer.widget.many2one",
         limit: 8,
         init(parent, options) {
@@ -18,7 +20,7 @@ odoo.define('scrummer.widget.many2one', require => {
         renderElement() {
             this._super();
             if (this.default) {
-                $.when(this.default).then(def => {
+                $.when(this.default).then((def) => {
                         if (def) {
                             if (!def.name || !def.id) {
                                 throw new Error("If default value is passed it has to contain 'id' and 'name' properties.");
@@ -37,9 +39,11 @@ odoo.define('scrummer.widget.many2one', require => {
             Materialize.updateTextFields();
         },
         start() {
-            this.$("input.id").change(this.changeHandler.bind(this));
+            if (typeof this.changeHandler === "function") {
+                this.$("input.id").change(this.changeHandler.bind(this));
+            }
 
-            this.$("input.name").on('keyup', e => {
+            this.$("input.name").on('keyup', (e) => {
                 // Capture Enter
                 if (e.which === 13) {
                     this.$el.find(`li:nth-child(${this.selectionIndex})`).click();
@@ -58,9 +62,9 @@ odoo.define('scrummer.widget.many2one', require => {
                 this.$(".many2one-content").empty();
                 this.isDirty = true;
                 this.searchSuggestions();
-            }).on('focusin', e => {
+            }).on('focusin', () => {
                 this.searchSuggestions();
-            }).on('focusout', e => {
+            }).on('focusout', (e) => {
                 if (e.relatedTarget && this.$el.has(e.relatedTarget).length === 0) {
                     this.$(".many2one-content").empty();
                 }
@@ -68,7 +72,7 @@ odoo.define('scrummer.widget.many2one', require => {
         },
         selectSuggestion(positionOffset) {
             if (positionOffset) {
-                this.selectionIndex = (this.selectionIndex - 1 + positionOffset + this.suggestions.length) % this.suggestions.length + 1;
+                this.selectionIndex = ((this.selectionIndex - 1 + positionOffset + this.suggestions.length) % this.suggestions.length) + 1;
             } else {
                 this.selectionIndex = 0;
             }
@@ -76,35 +80,32 @@ odoo.define('scrummer.widget.many2one', require => {
             this.$el.find(`li:nth-child(${this.selectionIndex})`).addClass("selected");
         },
         searchSuggestions() {
-            let val = this.isDirty ? this.$("input.name").val() : "";
-            data.getDataSet(this.model).name_search(val, this.domain, this.operator, this.limit).then(values => {
-                let suggestions = values.map(e => {
-                    return {
+            const val = this.isDirty ? this.$("input.name").val() : "";
+            data.getDataSet(this.model).name_search(val, this.domain, this.operator, this.limit)
+                .then((values) => {
+                    const suggestions = values.map((e) => ({
                         id: e[0], name: e[1]
-                    }
+                    }));
+                    this.renderSuggestions(suggestions);
                 });
-                this.renderSuggestions(suggestions);
-            });
         },
         renderSuggestions(suggestions) {
             if (suggestions) {
                 this.suggestions = suggestions;
             }
-            let root = this.$(".many2one-content");
+            const root = this.$(".many2one-content");
             root.empty();
-            for (let suggestion of this.suggestions) {
-                let suggestionNode = this.renderSuggestion(suggestion);
+            for (const suggestion of this.suggestions) {
+                const suggestionNode = this.renderSuggestion(suggestion);
                 suggestionNode.click(this.suggestionClickHandler.bind(this));
-                suggestions = root.append(suggestionNode);
+                this.suggestions = root.append(suggestionNode);
             }
         },
         renderSuggestion(suggestion) {
             return $(`<li data-id="${suggestion.id}"><span>${suggestion.name}</span></li>`);
         },
-        changeHandler() {
-        },
         suggestionClickHandler(e) {
-            let itemNode = $(e.target);
+            const itemNode = $(e.target);
 
             this.$("input.name").val(itemNode.text().trim());
             this.$("input.id").val(itemNode.getDataFromAncestor("id"));
@@ -117,10 +118,10 @@ odoo.define('scrummer.widget.many2one', require => {
             }
         },
         setReadonly(state) {
-            this.$("input").attr("readonly", !!state);
+            this.$("input").attr("readonly", Boolean(state));
         }
     });
     return {
         Many2One
-    }
+    };
 });

@@ -7,10 +7,10 @@ odoo.define(function (require) {
     require('scrummer.view.task').WorkflowTransitionsWidget.include({
 
         getAllowedTransitions() {
-            let transitions = this._super();
-            let projects = [this.taskWidget._model.project_id[0]];
+            const transitions = this._super();
+            const projects = [this.taskWidget._model.project_id[0]];
             return _.filter(transitions,
-                t => !(_.size(t.project_ids) > 0 && _.size(_.intersection(projects, t.project_ids)) == 0));
+                (t) => !(_.size(t.project_ids) > 0 && _.size(_.intersection(projects, t.project_ids)) === 0));
         },
 
     });

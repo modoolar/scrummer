@@ -5,7 +5,9 @@ odoo.define('scrummer_kanban.view.kanban.board', function (require) {
     "use strict";
     const KanbanTable = require('scrummer.view.kanban_table');
     const ViewManager = require('scrummer.view_manager');
+    const ScrummerData = require('scrummer.data');
     const KanbanModals = require('scrummer_kanban.widget.modal');
+    const hash_service = require('scrummer.hash_service');
     const web_core = require('web.core');
     const _t = web_core._t;
 
@@ -36,17 +38,17 @@ odoo.define('scrummer_kanban.view.kanban.board', function (require) {
             this._super(parent, options);
 
             // Getting board_id from hash and fetch all project_ids from that board in order to create filter for fetching projects
-            this.boardId = parseInt(hash_service.get("board"));
-            this.projectId = parseInt(hash_service.get("project"));
+            this.boardId = parseInt(hash_service.get("board"),10);
+            this.projectId = parseInt(hash_service.get("project"),10);
 
             window.as = this;
         },
         willStart() {
-            let options = {};
+            const options = {};
             if (this.projectId) {
                 options.project_id = this.projectId;
             }
-            return $.when(this._super(), data.session.rpc(`/scrummer/web/data/kanban_board/${this.boardId}`, options))
+            return $.when(this._super(), ScrummerData.session.rpc(`/scrummer/web/data/kanban_board/${this.boardId}`, options))
                 .then((dummy, r) => {
                     this.data = r;
                     if (this.isEmpty()) {

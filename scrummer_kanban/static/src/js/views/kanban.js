@@ -15,6 +15,47 @@ odoo.define('scrummer.view.kanban', function (require) {
 
     const task_service = DataServiceFactory.get("project.task", false);
 
+    const DefaultKanbanStateList = BacklogView.NonBacklogList.extend({
+        _name: "DefaultKanbanStateList",
+    });
+    const BacklogTaskItem = BacklogView.SimpleBacklogTaskItem.extend({
+        menuItems: BacklogView.SimpleBacklogTaskItem.prototype.menuItems.concat([
+            {
+                class: "assign-to",
+                icon: "mdi-account-plus",
+                text: _t("Assign To"),
+                callback: '_onAssignToClick',
+                sequence: 2.5,
+            },
+        ]),
+        set_list(listWidget, order) {
+            const board_id = parseInt(hash_service.get("board"), 10);
+            DataServiceFactory.get("project.agile.board").getRecord(board_id).then(() => {
+
+                // let stage_map = listWidget.attributes && listWidget.attributes["data-id"] === "default_kanban_stage" ?
+                //     board._custom.backlog_column_stages : board._custom.backlog_stages;
+
+                const type = listWidget.attributes && listWidget.attributes["data-id"] === "default_kanban_stage"
+                    ? "backlog_column" : "backlog";
+
+                // let stage_id = stage_map.get(this.record.workflow_id[0])[0];
+
+                this.trigger_up("set_task_stage", {
+                    task: this.record,
+                    order_field: this.order_field,
+                    order: order,
+                    type: type,
+                });
+            });
+        },
+        _onAssignToClick() {
+            const modal = new KanbanModals.AssignToModal(this.getParent(), {
+                task: this.record,
+            });
+            modal.appendTo($("body"));
+        }
+    });
+    BacklogTaskItem.sort_by = "agile_order";
     const KanbanBacklogView = BacklogView.AbstractBacklogView.extend({
         custom_events: Object.assign({}, BacklogView.AbstractBacklogView.prototype.custom_events || {}, {
             non_backlog_list_changed: '_onDefaultKanbanListChanged',
@@ -23,57 +64,52 @@ odoo.define('scrummer.view.kanban', function (require) {
         willStart() {
             return this._super().then(() => task_service.dataset
                 .id_search(this.filterQuery, this.getDefaultKanbanStateDomain())
-                .then(ids => {
-                    console.log("defaultKanbanStateTaskIds", ids);
+                .then((ids) => {
                     this.defaultKanbanStateTaskIds = ids;
-                }).then(() => {
-                    return DataServiceFactory
-                        .get("project.agile.board.kanban.backlog.state")
-                        .getRecords(this.board.kanban_backlog_state_ids)
-                        .then(records => {
-                            // TODO: Throw menaningful error if board is not configured with backlog view column(s)
-                            // this.board._custom.backlog_stages = new Map();
-                            this.backlog_stages = new Map();
-                            _.forEach(records, record => {
-                                let states = [];
-                                if (!this.backlog_stages.has(record.workflow_id[0])) {
-                                    this.backlog_stages.set(record.workflow_id[0], states)
-                                } else {
-                                    states = this.backlog_stages.get(record.workflow_id[0]);
-                                }
-                                states.push(record.stage_id[0]);
-                            });
+                }).then(() => DataServiceFactory
+                    .get("project.agile.board.kanban.backlog.state")
+                    .getRecords(this.board.kanban_backlog_state_ids)
+                    .then((records) => {
+                        // TODO: Throw menaningful error if board is not configured with backlog view column(s)
+                        // this.board._custom.backlog_stages = new Map();
+                        this.backlog_stages = new Map();
+                        _.forEach(records, (record) => {
+                            let states = [];
+                            if (this.backlog_stages.has(record.workflow_id[0])) {
+                                states = this.backlog_stages.get(record.workflow_id[0]);
+                            } else {
+                                this.backlog_stages.set(record.workflow_id[0], states);
+                            }
+                            states.push(record.stage_id[0]);
                         });
-                }).then(() => {
-                    return DataServiceFactory
-                        .get("project.agile.board.kanban.initial.column.status")
-                        .getRecords(this.board.kanban_initial_column_status_ids)
-                        .then(records => {
-                            // TODO: Throw menaningful error if board is not configured with backlog view column(s)
-                            this.backlog_column_stages = new Map();
-                            _.forEach(records, record => {
-                                let status = [];
-                                if (!this.backlog_column_stages.has(record.workflow_id[0])) {
-                                    this.backlog_column_stages.set(record.workflow_id[0], status)
-                                } else {
-                                    status = this.backlog_column_stages.get(record.workflow_id[0]);
-                                }
-                                status.push(record.stage_id[0]);
-                            });
+                    })).then(() => DataServiceFactory
+                    .get("project.agile.board.kanban.initial.column.status")
+                    .getRecords(this.board.kanban_initial_column_status_ids)
+                    .then((records) => {
+                        // TODO: Throw menaningful error if board is not configured with backlog view column(s)
+                        this.backlog_column_stages = new Map();
+                        _.forEach(records, (record) => {
+                            let status = [];
+                            if (this.backlog_column_stages.has(record.workflow_id[0])) {
+                                status = this.backlog_column_stages.get(record.workflow_id[0]);
+                            } else {
+                                this.backlog_column_stages.set(record.workflow_id[0], status);
+                            }
+                            status.push(record.stage_id[0]);
                         });
-                })
+                    }))
             );
         },
         getBacklogTaskDomain() {
-            return this._super().then(domain => {
+            return this._super().then((domain) => {
                 domain.push(["stage_id", "in", this.board.kanban_backlog_stage_ids]);
                 return domain;
             });
 
         },
-        getApplyFilterDomain(){
-          return this._super().then(domain => {
-              let stages = this.board.kanban_initial_column_stage_ids.concat(this.board.kanban_backlog_stage_ids)
+        getApplyFilterDomain() {
+            return this._super().then((domain) => {
+                const stages = this.board.kanban_initial_column_stage_ids.concat(this.board.kanban_backlog_stage_ids);
                 domain.push(["stage_id", "in", stages]);
                 return domain;
             });
@@ -90,7 +126,7 @@ odoo.define('scrummer.view.kanban', function (require) {
             this.defaultKanbanStateList.applyFilter(task_ids);
         },
         allTaskIds() {
-            let all_task_ids = [];
+            const all_task_ids = [];
             // Apparently push method returns the length of the new list instead of the new list
             // So i had to comment out the line below
             //return Array.prototype.push.apply(this._super(), this.backlogTaskList.task_ids);
@@ -114,7 +150,7 @@ odoo.define('scrummer.view.kanban', function (require) {
                 attributes: {"data-id": "default_kanban_stage"},
             });
 
-            let defaultKanbanStateData = {
+            const defaultKanbanStateData = {
                 defaultKanbanStateName: this.board.kanban_initial_column_id[1],
                 count: "0 issues",
                 estimates: {
@@ -136,7 +172,7 @@ odoo.define('scrummer.view.kanban', function (require) {
         },
 
         isTaskWidgetInBacklog(taskWidget) {
-            let state = taskWidget.record._previous || taskWidget.record;
+            const state = taskWidget.record._previous || taskWidget.record;
             return this.isTaskInBacklog(state);
         },
 
@@ -147,14 +183,14 @@ odoo.define('scrummer.view.kanban', function (require) {
             return BacklogTaskItem;
         },
         prepareShortcuts(list_id) {
-            list_id = list_id ? list_id : false;
-            let shortcuts = [{
+            const listId = list_id || false;
+            const shortcuts = [{
                 id: "default_kanban_stage",
                 name: this.board.kanban_initial_column_id[1]
             }, {
                 id: false, name: "Backlog",
             }];
-            let current = shortcuts.find(a => a.id == list_id);
+            const current = shortcuts.find((a) => a.id === listId);
             current.positioner = true;
             return shortcuts;
         },
@@ -162,7 +198,7 @@ odoo.define('scrummer.view.kanban', function (require) {
             return this.defaultKanbanStateList.addItem(task);
         },
         setNewTaskOrder(task) {
-            let destinationTaskList = this.backlogTaskList;
+            const destinationTaskList = this.backlogTaskList;
 
             // get agile_order from list
             task.agile_order = destinationTaskList.getNewOrder(null, destinationTaskList.list.size, false);
@@ -173,10 +209,10 @@ odoo.define('scrummer.view.kanban', function (require) {
         },
 
         _onSet_task_stage(evt) {
-            let stage_map = evt.data.type === "backlog_column" ?
-                this.backlog_column_stages : this.backlog_stages;
+            const stage_map = evt.data.type === "backlog_column"
+                ? this.backlog_column_stages : this.backlog_stages;
 
-            let stage_id = stage_map.get(evt.data.task.workflow_id[0])[0];
+            const stage_id = stage_map.get(evt.data.task.workflow_id[0])[0];
 
             evt.data.task.write({
                 stage_id,
@@ -186,54 +222,13 @@ odoo.define('scrummer.view.kanban', function (require) {
             // .fail(r => console.error("Error while saving agile order: ", r));
         },
     });
+
     ViewManager.include({
         build_view_registry() {
             this._super();
             this.view_registry.set("kanban", KanbanBacklogView);
         },
     });
-    const DefaultKanbanStateList = BacklogView.NonBacklogList.extend({
-        _name: "DefaultKanbanStateList",
-    });
-
-    const BacklogTaskItem = BacklogView.SimpleBacklogTaskItem.extend({
-        menuItems: BacklogView.SimpleBacklogTaskItem.prototype.menuItems.concat([
-            {
-                class: "assign-to",
-                icon: "mdi-account-plus",
-                text: _t("Assign To"),
-                callback: '_onAssignToClick',
-                sequence: 2.5,
-            },
-        ]),
-        set_list(listWidget, order) {
-            let board_id = parseInt(hash_service.get("board"));
-            DataServiceFactory.get("project.agile.board").getRecord(board_id).then(board => {
-
-                // let stage_map = listWidget.attributes && listWidget.attributes["data-id"] === "default_kanban_stage" ?
-                //     board._custom.backlog_column_stages : board._custom.backlog_stages;
-
-                let type = listWidget.attributes && listWidget.attributes["data-id"] === "default_kanban_stage" ?
-                    "backlog_column" : "backlog";
-
-                // let stage_id = stage_map.get(this.record.workflow_id[0])[0];
-
-                this.trigger_up("set_task_stage", {
-                    task: this.record,
-                    order_field: this.order_field,
-                    order: order,
-                    type: type,
-                });
-            });
-        },
-        _onAssignToClick() {
-            const modal = new KanbanModals.AssignToModal(this.getParent(), {
-                task: this.record,
-            });
-            modal.appendTo($("body"));
-        }
-    });
-    BacklogTaskItem.sort_by = "agile_order";
 
     return {
         KanbanBacklogView,

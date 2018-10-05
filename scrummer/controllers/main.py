@@ -56,7 +56,7 @@ class ScrummerController(http.Controller):
         if "attachment_ids" in comment:
             if isinstance(comment["attachment_ids"], list):
                 attachment_ids = message.attachment_ids.ids + \
-                                 comment['attachment_ids']
+                    comment['attachment_ids']
                 comment["attachment_ids"] = [(6, 0, attachment_ids)]
             else:
                 del comment['attachment_ids']
@@ -73,8 +73,11 @@ class ScrummerController(http.Controller):
         '/scrummer/web/data/task/<model("project.task"):task>'
         '/confirm_stage_change'
     ], type='json', auth='user')
-    def confirm_task_stage_change(self, task, values, message=None,
-            log_message=False):
+    def confirm_task_stage_change(
+            self, task, values,
+            message=None,
+            log_message=False
+    ):
 
         task.write(values)
         subtype = "mail.mt_comment" if log_message else "mail.mt_note"
@@ -283,8 +286,11 @@ class ScrummerController(http.Controller):
         }
 
     @http.route('/scrummer/messages', type='json', auth='user')
-    def load_messages(self, model, res_id, message_type=None,
-            message_subtype=None, **kwargs):
+    def load_messages(
+            self, model, res_id,
+            message_type=None,
+            message_subtype=None, **kwargs
+    ):
         def operator(value):
             return isinstance(value, (list,)) and 'in' or '='
 

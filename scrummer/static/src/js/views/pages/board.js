@@ -43,23 +43,23 @@ odoo.define('scrummer.page.board', function (require) {
             hash_service.setHash("page", "dashboard");
         },
         getBoard(deferred) {
-            data.cache.get("current_user").then(user => {
+            data.cache.get("current_user").then((user) => {
                 // Checking if board id is set in URL
                 // Note: it can be invalid if user lost rights to see it
-                let board = hash_service.get("board") || storage_service.get("board");
-                if (user.board_ids.includes(parseInt(board))) {
+                const board = hash_service.get("board") || storage_service.get("board");
+                if (user.board_ids.includes(parseInt(board, 10))) {
                     this.board = board;
-                    if(hash_service.get("board") !== board){
-                        hash_service.set("board", board)
+                    if (hash_service.get("board") !== board) {
+                        hash_service.set("board", board);
                     }
-                    if(storage_service.get("board") !== board){
-                        storage_service.set("board", board)
+                    if (storage_service.get("board") !== board) {
+                        storage_service.set("board", board);
                     }
                 }
                 if (!this.board) {
-                    let project_id = hash_service.get("project");
+                    const project_id = hash_service.get("project");
                     if (project_id) {
-                        data.cache.get("board_for_project", {id: project_id}).then(board_id => {
+                        data.cache.get("board_for_project", {id: project_id}).then((board_id) => {
                             if (!board_id) {
                                 this.handleNoBoard();
                                 return;
@@ -68,11 +68,10 @@ odoo.define('scrummer.page.board', function (require) {
                             this.fetchBoard(board_id).done(deferred.resolve);
                             hash_service.set("board", this.board);
                         });
-                    }
-                    else {
+                    } else {
                         data.getDataSet("project.agile.board").read_slice([], {
                             domain: [["is_default", "=", true]]
-                        }).then(boards => {
+                        }).then((boards) => {
                             if (boards.length === 0) {
                                 this.handleNoBoard();
                                 deferred.reject();
@@ -82,27 +81,29 @@ odoo.define('scrummer.page.board', function (require) {
                             hash_service.set("board", this.board_data.id);
                             storage_service.set("board", this.board_data.id);
                             deferred.resolve();
-                        })
+                        });
                     }
                 }
                 if (this.board) {
-                    this.fetchBoard(this.board).done(deferred.resolve)
+                    this.fetchBoard(this.board).done(deferred.resolve);
                 }
             });
         },
         fetchBoard(board_id) {
-            let getBoardDef = $.Deferred();
-            data.getDataSet("project.agile.board").read_ids([parseInt(board_id)]).then(boards => {
-                if (boards.length === 0) {
-                    hash_service.delete("board");
-                    storage_service.delete("board");
-                    this.getBoard(this.boardDeferred);
-                    getBoardDef.reject();
-                    return;
-                }
-                this.board_data = boards[0];
-                getBoardDef.resolve();
-            });
+            const getBoardDef = $.Deferred();
+            data.getDataSet("project.agile.board")
+                .read_ids([parseInt(board_id, 10)])
+                .then((boards) => {
+                    if (boards.length === 0) {
+                        hash_service.delete("board");
+                        storage_service.delete("board");
+                        this.getBoard(this.boardDeferred);
+                        getBoardDef.reject();
+                        return;
+                    }
+                    this.board_data = boards[0];
+                    getBoardDef.resolve();
+                });
             return getBoardDef.promise();
         },
         start() {
@@ -110,7 +111,8 @@ odoo.define('scrummer.page.board', function (require) {
                 //Main Left Sidebar Menu
                 $('.button-collapse').sideNav({
                     menuWidth: 300,
-                    edge: 'left', // Choose the horizontal origin
+                    // Choose the horizontal origin
+                    edge: 'left',
                 });
             });
             this.trigger_up('menu.added');

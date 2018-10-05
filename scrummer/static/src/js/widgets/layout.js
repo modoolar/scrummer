@@ -4,16 +4,17 @@
 odoo.define('scrummer.layout', function (require) {
     "use strict";
 
-    var core = require('scrummer.core');
-    var _t = require('web.core')._t;
-    var data = require('scrummer.data');
-    var web_client = require('web.web_client');
-    var PageManager = require('scrummer.page_manager');
+    const core = require('scrummer.core');
+    const _t = require('web.core')._t;
+    const qweb = require('web.core').qweb;
+    const data = require('scrummer.data');
+    const web_client = require('web.web_client');
+    const PageManager = require('scrummer.page_manager');
 
-    var AgileContainerWidget = require('scrummer.BaseWidgets').AgileContainerWidget;
-    var AgileHeader = require('scrummer.header');
+    const AgileContainerWidget = require('scrummer.BaseWidgets').AgileContainerWidget;
+    const AgileHeader = require('scrummer.header');
 
-    var AgileLayout = AgileContainerWidget.extend({
+    const AgileLayout = AgileContainerWidget.extend({
         template: "scrummer.layout",
         failTemplate: "scrummer.layout.fail",
         custom_events: {
@@ -53,14 +54,14 @@ odoo.define('scrummer.layout', function (require) {
             });
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => {
+            return $.when(this._super(), data.cache.get("current_user").then((user) => {
                 this.user = user;
-            }))
+            }));
         },
         renderElement() {
             // If user has no team, then he's not allowed to enter agile app.
             if (!this.shouldLoad()) {
-                let $el = $(qweb.render(this.failTemplate, this.generateLoadingErrors()).trim());
+                const $el = $(qweb.render(this.failTemplate, this.generateLoadingErrors()).trim());
                 this.replaceElement($el);
                 return;
             }
@@ -70,7 +71,7 @@ odoo.define('scrummer.layout', function (require) {
             return this.user.team_id;
         },
         generateLoadingErrors() {
-            let errors = [
+            const errors = [
                 {
                     name: "no_agile_team",
                     title: _t("Agile team missing"),
@@ -79,17 +80,17 @@ odoo.define('scrummer.layout', function (require) {
             ];
             return {
                 errors
-            }
+            };
         },
         start() {
             // Remove
             //$(document).off('click keyup',null,$._data(document,"events").keyup[1].handler);
 
-            var appNode = document.getElementsByClassName("o_content")[0];
-            var self = this;
-            var observer = new MutationObserver(mutations => {
+            const appNode = document.getElementsByClassName("o_content")[0];
+            const self = this;
+            const observer = new MutationObserver((mutations) => {
                 mutations.forEach(function (mutation) {
-                    if (mutation.addedNodes[0].id == "agile_layout" || mutation.addedNodes[0].id == "agile_layout_fail") {
+                    if (mutation.addedNodes[0].id === "agile_layout" || mutation.addedNodes[0].id === "agile_layout_fail") {
                         self.actionAddedToDOM();
                         observer.disconnect();
                     }
@@ -105,7 +106,7 @@ odoo.define('scrummer.layout', function (require) {
         },
         materializeInit() {
             $('body').addClass('loaded');
-            Waves.init({
+            window.Waves.init({
                 duration: 500,
                 delay: 1000
             });

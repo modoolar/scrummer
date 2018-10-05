@@ -202,22 +202,22 @@
 
     <template id="assets" name="scrummer assets">
 
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/materialize.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/dropify.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/jquery.expander.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/jquery.validate.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/jquery-ui.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/materialNote.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/ion.rangeSlider.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/moment.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/waypoint.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/external/lity.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/materialize.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/dropify.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/jquery.expander.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/jquery.validate.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/jquery-ui.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/materialNote.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/ion.rangeSlider.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/moment.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/waypoint.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/external/lity.js"/>
 
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/materialNoteOverrides.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/Sortable.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/pluralize.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/my-jquery-extensions.js"/>
-        <script type="text/javascript" src="/scrummer/static/src/js/lib/jquery-validate.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/materialNoteOverrides.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/Sortable.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/pluralize.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/my-jquery-extensions.js"/>
+        <script type="text/javascript" src="/scrummer/static/src/js/libs/jquery-validate.js"/>
 
         <script type="text/javascript" src="/scrummer/static/src/js/main.js"/>
         <script type="text/javascript" src="/scrummer/static/src/js/app_cache.js"/>

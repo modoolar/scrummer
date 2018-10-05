@@ -4,63 +4,128 @@
 odoo.define('scrummer.menu', function (require) {
     "use strict";
 
-    var AgileBaseWidgets = require('scrummer.BaseWidgets');
-    var AgileContainerWidget = AgileBaseWidgets.AgileContainerWidget;
-    var hash_service = require('scrummer.hash_service');
+    const AgileBaseWidgets = require('scrummer.BaseWidgets');
+    const AgileContainerWidget = AgileBaseWidgets.AgileContainerWidget;
+    const hash_service = require('scrummer.hash_service');
 
-    var core = require('web.core');
-    var _t = core._t;
+    const core = require('web.core');
+    const _t = core._t;
     window.qweb = core.qweb;
 
-    var AgileMenu = AgileContainerWidget.extend({
+    const AgileMenuItem = AgileContainerWidget.extend({
+        _name: "AgileMenuItem",
+        template: "scrummer.menu.menuitem",
+        init(parent, options) {
+            this._super(parent, options);
+            Object.assign(this, options);
+        },
+        build_widgets() {
+            if (this.children instanceof Array && this.children) {
+                for (const def of this.children.sort((a, b) => a.args.sequence - b.args.sequence)) {
+                    def.args.viewKey = def.args.viewKey ? def.args.viewKey : this.viewKey;
+                    this.render_widget(def);
+                }
+            }
+        }
+    });
+    const AgileHorizontalMenuItem = AgileMenuItem.extend({
+        _name: "AgileHorizontalMenuItem",
+        template: "scrummer.menu.menuitem.horisontal",
+        start() {
+            this.$el.find("a").click(() => hash_service.setHash(this.viewKey, this.view));
+            return this._super();
+        }
+    });
+    const AgileVerticalMenuItem = AgileMenuItem.extend({
+        _name: "AgileVerticalMenuItem",
+        init(parent, options) {
+            if (options.children && options.children.length > 0) {
+                this.template = "scrummer.menu.category";
+            }
+            if (options.parent) {
+                this.template = "scrummer.menu.subitem";
+            }
+            this._super(parent, options);
+        },
+        start() {
+            if (!this.children || this.children.length === 0) {
+                this.$("a").click(() => {
+                    hash_service.setHash(this.viewKey, this.view);
+                    $('.button-collapse').sideNav('hide');
+                });
+            }
+            return this._super();
+        }
+    });
+    const AgileVerticalFromTopMenuItem = AgileMenuItem.extend({
+        _name: "AgileVerticalFromTopMenuItem",
+        template: "scrummer.menu.menuitem.overflow",
+        init(parent, options) {
+            if (options.children && options.children.length > 0) {
+                this.template = "scrummer.menu.category";
+            }
+            if (options.parent) {
+                this.template = "scrummer.menu.subitem";
+            }
+            this._super(parent, options);
+        },
+        start() {
+            if (!this.children || this.children.length === 0) {
+                this.$("a").click(() => hash_service.setHash(this.viewKey, this.view));
+            }
+            return this._super();
+        }
+    });
+
+    const AgileMenu = AgileContainerWidget.extend({
         _name: "AgileMenu",
         init(parent, options = {}) {
             Object.assign(this, options);
             this._super(parent, options);
         },
         build_widget_list() {
-            throw new Error("You must implement build_widget_list() method in your implementation of AgileMenu class.")
+            throw new Error("You must implement build_widget_list() method in your implementation of AgileMenu class.");
         },
         // Building widge
         build_widgets() {
             // We need to convert flat array to hierarchy of parent-child menuitems
             // Dictionary of menuitem id, and the menuitem object
             // is used to index all menuitems for easy linking and checking for existance
-            let map = new Map();
-            for (let def of this.widgetDefinitions) {
+            const map = new Map();
+            for (const def of this.widgetDefinitions) {
                 if (map.has(def.args.id)) {
                     throw new Error("Duplicate id in menu widget: " + def.args.id);
                 }
                 map.set(def.args.id, def);
             }
             // Link every menuitem to it's parent if it has one, by adding it to parents children array
-            for (let def of map.values()) {
-                if (def.args !== undefined && def.args.parent) {
-                    let parent = map.get(def.args.parent);
-                    if (parent === undefined) {
+            for (const def of map.values()) {
+                if ("args" in def && def.args.parent) {
+                    const parent = map.get(def.args.parent);
+                    if (typeof parent === "undefined") {
                         throw new Error("Menu item definition: Parent id not found: " + def.args.parent);
                     }
                     // Append child to children array or create one if doesn't already exist
                     if (parent.args.children instanceof Array) {
-                        parent.args.children.push(def)
+                        parent.args.children.push(def);
                     } else {
-                        parent.args.children = [def]
+                        parent.args.children = [def];
                     }
                 }
             }
             // Create widgets array from map that only contains root menuitems (without parent),
             // and sort them by sequence
-            let widgets = [...map.values()]
-                .filter((def) => def.args.parent === undefined || def.args.parent === null)
+            const widgets = [...map.values()]
+                .filter((def) => typeof def.args.parent === "undefined" || def.args.parent === null)
                 .sort((a, b) => a.args.sequence - b.args.sequence);
 
-            for (let def of widgets) {
-                def.args.viewKey = !(def.args.viewKey) ? this.viewKey : def.args.viewKey;
-                this.render_widget(def)
+            for (const def of widgets) {
+                def.args.viewKey = def.args.viewKey ? def.args.viewKey : this.viewKey;
+                this.render_widget(def);
             }
         },
     });
-    var AgileViewMenu = AgileMenu.extend({
+    const AgileViewMenu = AgileMenu.extend({
         _name: "AgileViewMenu",
         init(parent, options) {
             this._super(parent, options);
@@ -88,7 +153,7 @@ odoo.define('scrummer.menu', function (require) {
             return this._super();
         }
     });
-    var AgileTopMenu = AgileMenu.extend({
+    const AgileTopMenu = AgileMenu.extend({
         _name: "AgileTopMenu",
         tagName: "ul",
         build_widget_list() {
@@ -104,70 +169,6 @@ odoo.define('scrummer.menu', function (require) {
             });
         }
     });
-    var AgileMenuItem = AgileContainerWidget.extend({
-        _name: "AgileMenuItem",
-        template: "scrummer.menu.menuitem",
-        init(parent, options) {
-            this._super(parent, options);
-            Object.assign(this, options);
-        },
-        build_widgets() {
-            if (this.children instanceof Array && this.children) {
-                for (let def of this.children.sort((a, b) => a.args.sequence - b.args.sequence)) {
-                    def.args.viewKey = !(def.args.viewKey) ? this.viewKey : def.args.viewKey;
-                    this.render_widget(def);
-                }
-            }
-        }
-    });
-    var AgileHorizontalMenuItem = AgileMenuItem.extend({
-        _name: "AgileHorizontalMenuItem",
-        template: "scrummer.menu.menuitem.horisontal",
-        start() {
-            this.$el.find("a").click(() => hash_service.setHash(this.viewKey, this.view));
-            return this._super();
-        }
-    });
-    var AgileVerticalMenuItem = AgileMenuItem.extend({
-        _name: "AgileVerticalMenuItem",
-        init(parent, options) {
-            if (options.children && options.children.length > 0) {
-                this.template = "scrummer.menu.category";
-            }
-            if (options.parent) {
-                this.template = "scrummer.menu.subitem"
-            }
-            this._super(parent, options);
-        },
-        start() {
-            if (!this.children || this.children.length == 0) {
-                this.$("a").click(() => {
-                    hash_service.setHash(this.viewKey, this.view);
-                    $('.button-collapse').sideNav('hide');
-                });
-            }
-            return this._super();
-        }
-    });
-    var AgileVerticalFromTopMenuItem = AgileMenuItem.extend({
-        _name: "AgileVerticalFromTopMenuItem",
-        template: "scrummer.menu.menuitem.overflow",
-        init(parent, options) {
-            if (options.children && options.children.length > 0) {
-                this.template = "scrummer.menu.category";
-            }
-            if (options.parent) {
-                this.template = "scrummer.menu.subitem"
-            }
-            this._super(parent, options);
-        },
-        start() {
-            if (!this.children || this.children.length == 0) {
-                this.$("a").click(() => hash_service.setHash(this.viewKey, this.view));
-            }
-            return this._super();
-        }
-    });
     return {
         AgileMenu,
         AgileViewMenu,
@@ -177,5 +178,5 @@ odoo.define('scrummer.menu', function (require) {
         AgileVerticalMenuItem,
         AgileVerticalFromTopMenuItem
 
-    }
+    };
 });

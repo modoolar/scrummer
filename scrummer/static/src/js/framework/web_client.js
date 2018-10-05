@@ -3,8 +3,9 @@
 
 "use strict";
 odoo.define('web.web_client', function (require) {
-    var WebClient = require('web.WebClient');
-    var web_client = new WebClient();
+    /* eslint-disable no-empty-function*/
+    const WebClient = require('web.WebClient');
+    const web_client = new WebClient();
 
 
     web_client._title_changed = function () {};

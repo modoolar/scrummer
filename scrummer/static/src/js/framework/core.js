@@ -3,11 +3,11 @@
 
 odoo.define('scrummer.core', function (require) {
     "use strict";
-    var Bus = require('web.Bus');
+    const Bus = require('web.Bus');
 
-    var bus = new Bus();
+    const bus = new Bus();
 
     return {
         bus,
-    }
+    };
 });

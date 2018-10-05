@@ -7,10 +7,10 @@ odoo.define(function (require) {
     require('scrummer.view.task').WorkflowTransitionsWidget.include({
 
         getAllowedTransitions() {
-            let transitions = this._super();
-            let user_groups = this.current_user.groups_id;
+            const transitions = this._super();
+            const user_groups = this.current_user.groups_id;
             return _.filter(transitions,
-                t => !(_.size(t.group_ids) > 0 && _.size(_.intersection(user_groups, t.group_ids)) == 0));
+                (t) => !(_.size(t.group_ids) > 0 && _.size(_.intersection(user_groups, t.group_ids)) === 0));
         },
 
     });

@@ -5,6 +5,7 @@ odoo.define('scrummer_kanban.widget.modal', function (require) {
     "use strict";
     const AgileModals = require('scrummer.widget.modal');
     const Many2One = require('scrummer.widget.many2one').Many2One;
+    const ScrummerData = require('scrummer.data');
     const web_core = require('web.core');
     const _t = web_core._t;
 
@@ -16,7 +17,7 @@ odoo.define('scrummer_kanban.widget.modal', function (require) {
             this._require_obj("task", ["_source"], "Task parameter must be data_service record.");
         },
         willStart() {
-            return $.when(this._super(), data.cache.get("current_user").then(user => data.cache.get("team_members", {teamId: user.team_id[0]})).then(members => {
+            return $.when(this._super(), ScrummerData.cache.get("current_user").then((user) => ScrummerData.cache.get("team_members", {teamId: user.team_id[0]})).then((members) => {
                 this.members = members;
             }));
         },
@@ -28,7 +29,7 @@ odoo.define('scrummer_kanban.widget.modal', function (require) {
                 model: "res.users",
                 field_name: "user_id",
                 domain: [
-                    ["id", "in", this.members.map(m=>m.id)],
+                    ["id", "in", this.members.map((m)=>m.id)],
                 ],
             });
             this.assigneeMany2one.appendTo(this.$("form"));

@@ -19,6 +19,22 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
 
     const sprint_service = DataServiceFactory.get("project.agile.scrum.sprint", false);
 
+    const SprintList = BacklogView.NonBacklogList.extend({
+        _name: "SprintList",
+        getAllTaskIds() {
+            if (!this.generalFilteredTaskIds) {
+                this.generalFilteredTaskIds = this.sprintData.task_ids.filter((id) => this.allFilteredTaskIds.includes(id));
+                return this.generalFilteredTaskIds;
+            }
+            return this.sprintData.task_ids.filter((id) => this.generalFilteredTaskIds.includes(id));
+        },
+        addItem() {
+            const modelItem = this._super.apply(this, arguments);
+            !this.generalFilteredTaskIds.includes(modelItem.id) && this.generalFilteredTaskIds.push(modelItem.id);
+            return modelItem;
+        }
+    });
+
     const SprintDataWidget = DataWidget.extend({
         template: "scrummer.scrum.sprint",
         _name: "SprintDataWidget",
@@ -26,16 +42,16 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
 
             //TODO: Use non_backlog_list_changed event to update counters
             add_item: function (evt) {
-                let itemData = evt.data.itemData;
+                const itemData = evt.data.itemData;
                 this.count[itemData.wkf_state_type] += itemData.story_points;
 
-                let wkf_state_class = ".wkf_state_" + itemData.wkf_state_type;
+                const wkf_state_class = ".wkf_state_" + itemData.wkf_state_type;
                 this.$(wkf_state_class).text(this.count[itemData.wkf_state_type]);
                 this.$(".task-count").text((this.taskList.list.size || 0) + " " + pluralize("issue", this.taskList.list.size));
             },
             remove_item: function (evt) {
-                let itemData = evt.data.itemData;
-                let wkf_state_class = ".wkf_state_" + itemData.wkf_state_type;
+                const itemData = evt.data.itemData;
+                const wkf_state_class = ".wkf_state_" + itemData.wkf_state_type;
                 this.count[itemData.wkf_state_type] -= itemData.story_points;
                 this.$(wkf_state_class).text(this.count[itemData.wkf_state_type]);
                 this.$(".task-count").text((this.taskList.list.size || 0) + " " + pluralize("issue", this.taskList.list.size));
@@ -55,7 +71,7 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
                 todo: 0,
                 in_progress: 0,
                 done: 0,
-            }
+            };
         },
         start_date_f() {
             return this._model.start_date;
@@ -89,19 +105,19 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             this.taskList.addItem(task);
         },
         start() {
-            this.$("#btn_delete").click((e) => {
+            this.$("#btn_delete").click(() => {
                 this.trigger_up("delete_sprint", {id: this.id});
             });
-            this.$("#btn_up").click((e) => {
+            this.$("#btn_up").click(() => {
                 this.trigger_up("move_sprint_up", {sprint: this});
             });
-            this.$("#btn_down").click((e) => {
+            this.$("#btn_down").click(() => {
                 this.trigger_up("move_sprint_down", {sprint: this});
             });
-            this.$("#btn_start").click((e) => {
+            this.$("#btn_start").click(() => {
                 this.trigger_up("start_sprint", {sprint: this});
             });
-            this.$("#btn_end").click((e) => {
+            this.$("#btn_end").click(() => {
                 this.trigger_up("end_sprint", {sprint: this});
             });
             return this._super();
@@ -114,7 +130,6 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             $('.collapsible').collapsible();
         },
     });
-
     const BacklogTaskItem = BacklogView.SimpleBacklogTaskItem.extend({
         init(parent, options) {
             this._super(parent, options);
@@ -131,22 +146,8 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             });
         }
     });
-    BacklogTaskItem.sort_by = "agile_order";
 
-    const SprintList = BacklogView.NonBacklogList.extend({
-        _name: "SprintList",
-        getAllTaskIds() {
-            if (!this.generalFilteredTaskIds) {
-                return this.generalFilteredTaskIds = this.sprintData.task_ids.filter(id => this.allFilteredTaskIds.includes(id));
-            }
-            return this.sprintData.task_ids.filter(id => this.generalFilteredTaskIds.includes(id));
-        },
-        addItem() {
-            let modelItem = this._super.apply(this, arguments);
-            !this.generalFilteredTaskIds.includes(modelItem.id) && this.generalFilteredTaskIds.push(modelItem.id);
-            return modelItem;
-        }
-    });
+    BacklogTaskItem.sort_by = "agile_order";
 
     const ScrumBacklogView = BacklogView.AbstractBacklogView.extend({
         custom_events: Object.assign({}, BacklogView.AbstractBacklogView.prototype.custom_events || {}, {
@@ -157,7 +158,12 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             end_sprint: '_onEndSprint',
         }),
         menuItems: BacklogView.AbstractBacklogView.prototype.menuItems.concat([
-            {class: "add-sprint", icon: "mdi-rotate-3d", text: _("Add new sprint"), callback: '_onAddNewSprintClick'},
+            {
+                class: "add-sprint",
+                icon: "mdi-rotate-3d",
+                text: _("Add new sprint"),
+                callback: '_onAddNewSprintClick'
+            },
         ]),
         loadDependencies() {
             return this._super().then(() => {
@@ -167,27 +173,25 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
 
         },
         willStart() {
-            return this._super().then(() => {
-                return sprint_service.dataset.id_search("", this.getSprintDomain())
-                    .then(sprint_ids => sprint_service.getRecords(sprint_ids))
-                    .then(sprints => {
-                        this.sprintMap = new Map();
-                        this.ordered_sprint_ids = [];
-                        // sort sprints first by order, and then by state so that state is primary sort parameter
-                        for (let sprint of sprints.sort((a, b) => a.order - b.order).sort((a, b) => {
-                            if (a.state < b.state) {
-                                return -1;
-                            }
-                            if (a.state > b.state) {
-                                return 1;
-                            }
-                            return 0;
-                        })) {
-                            this.ordered_sprint_ids.push(sprint.id);
-                            this.sprintMap.set(sprint.id, sprint);
+            return this._super().then(() => sprint_service.dataset.id_search("", this.getSprintDomain())
+                .then((sprint_ids) => sprint_service.getRecords(sprint_ids))
+                .then((sprints) => {
+                    this.sprintMap = new Map();
+                    this.ordered_sprint_ids = [];
+                    // sort sprints first by order, and then by state so that state is primary sort parameter
+                    for (const sprint of sprints.sort((a, b) => a.order - b.order).sort((a, b) => {
+                        if (a.state < b.state) {
+                            return -1;
                         }
-                    });
-            });
+                        if (a.state > b.state) {
+                            return 1;
+                        }
+                        return 0;
+                    })) {
+                        this.ordered_sprint_ids.push(sprint.id);
+                        this.sprintMap.set(sprint.id, sprint);
+                    }
+                }));
         },
 
         sprintBacklogStatesFilterExists() {
@@ -195,7 +199,7 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
         },
 
         getBacklogTaskDomain() {
-            return this._super().then(domain => {
+            return this._super().then((domain) => {
                 domain.push(["sprint_id", "=", false]);
 
                 if (this.sprintBacklogStatesFilterExists()) {
@@ -209,23 +213,23 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             return [["state", "!=", "completed"], ["id", "in", this.sprint_ids]];
         },
         getApplyFilterDomain() {
-            return this._super().then(domain => {
+            return this._super().then((domain) => {
 
-
+                /* eslint-disable no-inline-comments */
                 Array.prototype.push.apply(domain, [
-                    "|",                                                // 1. Task must be either in:
-                    ["sprint_state", "in", ["draft", "active"]],        //      Active or draft sprint
-                    ["sprint_id", "=", false],                          //      Or in backlog
-                    "|",                                                // 2. One of the following criteria:
-                    ["sprint_id", "in", this.sprint_ids],               //      Task is in sprint and
-                    "&",                                                //  OR
-                    ["sprint_id", "=", false],                          //      Task is in backlog and
-                    ["wkf_state_type", "!=", "done"],                   //      state type is not "done"
+                    "|", // 1. Task must be either in:
+                    ["sprint_state", "in", ["draft", "active"]], //      Active or draft sprint
+                    ["sprint_id", "=", false], //      Or in backlog
+                    "|", // 2. One of the following criteria:
+                    ["sprint_id", "in", this.sprint_ids], //      Task is in sprint and
+                    "&", //  OR
+                    ["sprint_id", "=", false], //      Task is in backlog and
+                    ["wkf_state_type", "!=", "done"], //      state type is not "done"
                 ]);
 
 
                 if (this.sprintBacklogStatesFilterExists()) {
-                    let states_domain = ["wkf_state_id", "in", this.board.scrum_backlog_state_ids];
+                    const states_domain = ["wkf_state_id", "in", this.board.scrum_backlog_state_ids];
                     domain.splice(domain.length - 6, 0, "&");
                     domain.splice(domain.length - 5, 0, states_domain);
 
@@ -234,23 +238,23 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
                 }
 
                 return domain;
-            })
+            });
         },
         sprintTaskIds() {
-            let result = [];
-            for (let sprint of this.sprintWidgetsMap.values()) {
+            const result = [];
+            for (const sprint of this.sprintWidgetsMap.values()) {
                 Array.prototype.push.apply(result, sprint._model.task_ids);
             }
             return result;
         },
         handleFilter(task_ids) {
-            for (let sprintWidget of this.sprintWidgetsMap.values()) {
+            for (const sprintWidget of this.sprintWidgetsMap.values()) {
                 sprintWidget.taskList.applyFilter(task_ids);
             }
             this._super(task_ids);
         },
         allTaskIds() {
-            let taskIds = [];
+            const taskIds = [];
             Array.prototype.push.apply(taskIds, this._super());
             Array.prototype.push.apply(taskIds, this.sprintTaskIds());
             return taskIds;
@@ -259,9 +263,9 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             this._super();
             this.lastest_sprint_order = 0;
             this.sprintWidgetsMap = new Map();
-            for (let sprint_id of this.ordered_sprint_ids) {
-                let sprint = this.sprintMap.get(sprint_id);
-                let sprintWidget = this.addSprint(sprint);
+            for (const sprint_id of this.ordered_sprint_ids) {
+                const sprint = this.sprintMap.get(sprint_id);
+                const sprintWidget = this.addSprint(sprint);
 
                 if (sprint.state === "active") {
                     this.active_sprint = sprintWidget;
@@ -272,9 +276,9 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
         _getNewListWidget(sprint_id) {
             if (sprint_id && this.sprintWidgetsMap.has(sprint_id)) {
                 return this.sprintWidgetsMap.get(sprint_id).taskList;
-            } else {
-                return this.backlogTaskList;
             }
+            return this.backlogTaskList;
+
         },
         getTaskListOfTaskWidget(taskWidget) {
             return this._getNewListWidget(taskWidget.sprintId);
@@ -283,24 +287,22 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             return !task.sprint_id;
         },
         isTaskWidgetInBacklog(taskWidget) {
-            let state = taskWidget.record._previous || taskWidget.record;
+            const state = taskWidget.record._previous || taskWidget.record;
             return this.isTaskInBacklog(state);
         },
         _getTaskItemClass() {
             return BacklogTaskItem;
         },
         prepareShortcuts(list_id) {
-            list_id = list_id ? list_id : false;
-            let shortcuts = [...this.sprintWidgetsMap.values()]
+            const listId = list_id || false;
+            const shortcuts = [...this.sprintWidgetsMap.values()]
                 .sort((a, b) => a._model.order > b._model.order)
-                .map(a => {
-                    return {id: a._model.id, name: a._model.name.trim()}
-                });
+                .map((a) => ({id: a._model.id, name: a._model.name.trim()}));
             shortcuts.push({
                 id: false,
                 name: _("Backlog"),
             });
-            let current = shortcuts.find(a => a.id == list_id);
+            const current = shortcuts.find((a) => a.id === listId);
             current.positioner = true;
             return shortcuts;
         },
@@ -309,8 +311,8 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             // if (task.type_id[0] === this.epic_type_id) {
             //     return;
             // }
-            let sprint_id = task.sprint_id[0];
-            let sprintWidget = this.sprintWidgetsMap.get(sprint_id);
+            const sprint_id = task.sprint_id[0];
+            const sprintWidget = this.sprintWidgetsMap.get(sprint_id);
             if (!sprintWidget) {
                 return;
             }
@@ -324,7 +326,7 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
         },
         setNewTaskOrder(task) {
             // Get ModelList widget where task is beeing created
-            let destinationTaskList = (this.sprintWidgetsMap.get(task.sprint_id)) ? this.sprintWidgetsMap.get(task.sprint_id).taskList : this.backlogTaskList;
+            const destinationTaskList = this.sprintWidgetsMap.get(task.sprint_id) ? this.sprintWidgetsMap.get(task.sprint_id).taskList : this.backlogTaskList;
 
             // get agile_order from list
             task.agile_order = destinationTaskList.getNewOrder(null, destinationTaskList.list.size, task.sprint_id);
@@ -337,21 +339,21 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
 
             // swap model values
             if (store) {
-                let tmpOrder = sprintWillGoUp._model.order;
+                const tmpOrder = sprintWillGoUp._model.order;
                 sprintWillGoUp._model.order = sprintWillGoDown._model.order;
                 sprintWillGoDown._model.order = tmpOrder;
             }
 
             // swap in backlogView.__parentedChildren array;
-            let goUpIndex = this.__parentedChildren.findIndex(e => e.id == sprintWillGoUp.id);
-            let goDownIndex = this.__parentedChildren.findIndex(e => e.id == sprintWillGoDown.id);
+            const goUpIndex = this.__parentedChildren.findIndex((e) => e.id === sprintWillGoUp.id);
+            const goDownIndex = this.__parentedChildren.findIndex((e) => e.id === sprintWillGoDown.id);
             this.__parentedChildren[goUpIndex] = sprintWillGoDown;
             this.__parentedChildren[goDownIndex] = sprintWillGoUp;
 
             this.renderSprintState();
         },
         addSprint(sprint, highlight) {
-            let team = this.user.team_ids[this.user.team_id[0]];
+            const team = this.user.team_ids[this.user.team_id[0]];
             if (!team.sprint_ids.includes(sprint.id)) {
                 team.sprint_ids.push(sprint.id);
             }
@@ -361,7 +363,7 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             }
             this.sprintMap.set(sprint.id, sprint);
 
-            let sprintDataWidget = new SprintDataWidget(this, {
+            const sprintDataWidget = new SprintDataWidget(this, {
                 id: sprint.id,
                 taskWidgetItemCache: this.taskWidgetItemMap,
                 TaskItemClass: this._getTaskItemClass(),
@@ -385,24 +387,26 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
 
             // because moving sprints up and down depends on order in __parentedChildren array, and last element is assumed to be backlog,
             // swap last two elements.
-            let c = this.__parentedChildren;
+            const c = this.__parentedChildren;
             if (this.backlogTaskList && c[c.length - 2] === this.backlogTaskList) {
-                let tmp = c[c.length - 1];
+                const tmp = c[c.length - 1];
                 c[c.length - 1] = c[c.length - 2];
                 c[c.length - 2] = tmp;
             }
 
             // Remember lastest sprint order for creation of new sprints.
-            this.lastest_sprint_order = (this.lastest_sprint_order > sprint.order) ? this.lastest_sprint_order : sprint.order;
+            this.lastest_sprint_order = this.lastest_sprint_order > sprint.order ? this.lastest_sprint_order : sprint.order;
 
             return sprintDataWidget;
         },
         renderSprintState() {
-            let sprintWidgets = this.__parentedChildren.filter(e => e.dataset && e.dataset.model === "project.agile.scrum.sprint");
+            const sprintWidgets = this.__parentedChildren.filter((e) => e.dataset && e.dataset.model === "project.agile.scrum.sprint");
             if (sprintWidgets.length < 1) {
                 return;
             }
-            let hasActive, firstNonActive;
+            let hasActive = null;
+            let firstNonActive = null;
+
             if (sprintWidgets[0]._model.state === "active") {
                 hasActive = true;
                 firstNonActive = false;
@@ -413,7 +417,7 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
                 firstNonActive = true;
             }
 
-            for (let sprint of sprintWidgets) {
+            for (const sprint of sprintWidgets) {
                 sprint.$("#btn_start").hide();
                 sprint.$("#btn_end").hide();
                 sprint.$("#btn_up").hide();
@@ -441,14 +445,14 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
         },
         _onProjectTaskWrite(id, vals, payload, task) {
             this._super(id, vals, payload, task);
-            let user = payload.user_id;
+            const user = payload.user_id;
             // Check if task was moved to sprint that doesn't belong to my team, if someone else has done that and if that change was not indirect.
             if (vals.sprint_id && !this.sprintWidgetsMap.has(vals.sprint_id[0]) && user.id !== data.session.uid && payload.indirect === false) {
                 // Skip adding tasks from other projects
                 if (!this.project_ids.includes(task.project_id[0])) {
                     return;
                 }
-                var toastContent = $('<div class="toast-content"><p><span class="toast-user-name">' + this.user.name + '</span> moved ' + task.priority_id[1] + ' ' + task.type_id[1] + ' <span class="toast-task-name">' + task.key + ' - ' + task.name + '</span> to his/her team\'s sprint</p></div>');
+                const toastContent = $('<div class="toast-content"><p><span class="toast-user-name">' + this.user.name + '</span> moved ' + task.priority_id[1] + ' ' + task.type_id[1] + ' <span class="toast-task-name">' + task.key + ' - ' + task.name + '</span> to his/her team\'s sprint</p></div>');
                 AgileToast.toast(toastContent, data.getImage("res.users", this.user.id, this.user.__last_update), {
                     text: "open", callback: () => {
                         hash_service.set("task", task.id);
@@ -458,42 +462,42 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
                 });
             }
         },
-        _onProjectAgileScrumSprintWrite(id, vals, payload) {
+        _onProjectAgileScrumSprintWrite(id, vals) {
             if (vals.order) {
-                let sprintWidgets = this.__parentedChildren.filter(w => w._model && w._model.order === vals.order);
+                const sprintWidgets = this.__parentedChildren.filter((w) => w._model && w._model.order === vals.order);
                 // Since sprint widgets change their order normally by swapping places, write will happen on both sprints that got swapped.
                 // When write for first of the sprint happens, in that moment,
                 // we will have two sprints with the same order (until second one gets previous order of the first one)
                 // When we have two sprints with the same order, we know that they should swap positions,
                 // but it souldn't trigger another write, so false is passed for store argument.
-                if (sprintWidgets.length == 2) {
+                if (sprintWidgets.length === 2) {
                     this.swapSprints(sprintWidgets[1], sprintWidgets[0], false);
                 }
             }
             if (vals.state) {
                 if (vals.state === "completed") {
-                    let sprintWidget = this.sprintWidgetsMap.get(id);
+                    const sprintWidget = this.sprintWidgetsMap.get(id);
                     if (sprintWidget) {
                         sprintWidget.destroy();
                         this.sprintWidgetsMap.delete(id);
                     } else {
-                        console.error("Trying to delete already deleted sprint...")
+                        console.error("Trying to delete already deleted sprint...");
                     }
                 }
                 this.renderSprintState();
             }
         },
-        _onProjectAgileScrumSprintCreate(id, vals, payload) {
-            sprint_service.getRecord(id).then(sprint => {
+        _onProjectAgileScrumSprintCreate(id) {
+            sprint_service.getRecord(id).then((sprint) => {
                 this.addSprint(sprint, true);
-            })
+            });
         },
-        _onProjectAgileScrumSprintUnlink(id, payload) {
+        _onProjectAgileScrumSprintUnlink(id) {
             this.trigger("delete_sprint", {data: {id, external: true}});
         },
         // CUSTOM EVENT HENDLERS
         _onDeleteSprint(evt) {
-            let sprint = this.sprintWidgetsMap.get(evt.data.id);
+            const sprint = this.sprintWidgetsMap.get(evt.data.id);
             if (!sprint) {
                 return;
             }
@@ -507,57 +511,56 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             dialog.confirm(_t("Delete sprint"), _t("Are you sure you want to delete this sprint?"), _t("yes")).done(() => {
                 sprint.unlink().done(function () {
                     // At this point database doesn't contain record, and we should cleanup widget and remove tasks.
-                    let sprintWidget = this.sprintWidgetsMap.get(sprint.id);
                     data.getDataSet("project.task").call('write', [this.sprintWidgetsMap.get(sprint.id)._model.task_ids, {sprint_id: false}]);
 
                 }.bind(this));
             });
         },
         _onMoveSprintUp(evt) {
-            let sprint = evt.data.sprint;
-            let indexOfPrevious = this.__parentedChildren.findIndex(e => e.id == sprint.id) - 1;
-            let previousSprint = this.__parentedChildren[indexOfPrevious];
+            const sprint = evt.data.sprint;
+            const indexOfPrevious = this.__parentedChildren.findIndex((e) => e.id === sprint.id) - 1;
+            const previousSprint = this.__parentedChildren[indexOfPrevious];
             this.swapSprints(sprint, previousSprint);
         },
         _onMoveSprintDown(evt) {
-            let sprint = evt.data.sprint;
-            let indexOfNext = this.__parentedChildren.findIndex(e => e.id == sprint.id) + 1;
-            let nextSprint = this.__parentedChildren[indexOfNext];
+            const sprint = evt.data.sprint;
+            const indexOfNext = this.__parentedChildren.findIndex((e) => e.id === sprint.id) + 1;
+            const nextSprint = this.__parentedChildren[indexOfNext];
             this.swapSprints(nextSprint, sprint);
         },
         _onStartSprint(evt) {
-            let sprint = evt.data.sprint;
+            const sprint = evt.data.sprint;
             dialog.confirm(_t("Start sprint"), _t("Are you sure you want to start this sprint?"), _t("yes")).done(() => {
-                var start_date = moment(new Date()).hours(9).minutes(0).seconds(0);
+                let start_date = moment(new Date()).hours(9).minutes(0).seconds(0);
 
                 // When loading backlog view we need to load team details as well.
                 // TODO: Here we need to take actual sprint length setting from team level.
-                var end_date = start_date.clone().add(2, 'week');
+                let end_date = start_date.clone().add(2, 'week');
 
-                start_date = field_utils.parse['datetime'](start_date); //, {timezone: false}
-                end_date = field_utils.parse['datetime'](end_date); //, {timezone: false})
+                start_date = field_utils.parse.datetime(start_date); //, {timezone: false}
+                end_date = field_utils.parse.datetime(end_date); //, {timezone: false})
 
                 data.session.rpc(`/scrummer/web/data/sprint/${sprint.id}/start`, {
                     start_date: start_date,
                     end_date: end_date
-                })
+                });
             });
         },
         _onEndSprint(evt) {
-            let sprint = evt.data.sprint;
+            const sprint = evt.data.sprint;
             dialog.confirm(_t("End sprint"), _t("Are you sure you want to end this sprint?"), _t("yes")).done(() => {
                 data.session.rpc(`/scrummer/web/data/sprint/${sprint.id}/stop`);
             });
         },
         _onAddNewSprintClick() {
-            let sprintData = {
+            const sprintData = {
                 'order': ++this.lastest_sprint_order,
             };
             data.session.rpc(`/scrummer/web/data/sprint/create/`, {'sprint': sprintData})
-                .then(sprint => {
+                .then((sprint) => {
                     this.addSprint(sprint, true);
                 })
-                .fail(e => {
+                .fail((e) => {
                     console.error(e);
                 });
         },

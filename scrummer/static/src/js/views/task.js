@@ -3,7 +3,7 @@
 
 odoo.define('scrummer.view.task', function (require) {
     "use strict";
-    const data = require('scrummer.data');
+    const ScrummerData = require('scrummer.data');
     const DataServiceFactory = require('scrummer.data_service_factory');
     const BaseWidgets = require('scrummer.BaseWidgets');
     const hash_service = require('scrummer.hash_service');
@@ -16,7 +16,127 @@ odoo.define('scrummer.view.task', function (require) {
     const _t = web_core._t;
     const dialog = require('scrummer.dialog');
 
-    var TaskView = BaseWidgets.AgileViewWidget.extend({
+    const WorkflowTransitionsWidget = BaseWidgets.AgileBaseWidget.extend({
+        id: "workflow-transition-widget",
+        init(parent, options) {
+            Object.assign(this, options);
+            this._super(parent, options);
+            this._require_obj("taskWidget");
+            this.workflowId = this.taskWidget._model.workflow_id[0];
+            this.taskStageId = this.taskWidget._model.stage_id[0];
+            this.size = this.size || 2;
+        },
+        willStart() {
+            return $.when(this._super(),
+                ScrummerData.cache.get("project.workflow", {id: this.workflowId}).then((workflow) => {
+                    this.workflow = workflow;
+                }),
+                ScrummerData.cache.get("current_user").then((user) => {
+                    this.current_user = user;
+                }));
+        },
+        renderElement() {
+            this._super();
+            this.setCurrentStage();
+        },
+        setSize(size) {
+            this.size = size;
+            this.setCurrentStage();
+        },
+        setCurrentStage(stageId) {
+            if (stageId) {
+                this.taskStageId = stageId;
+            }
+            this.outTransitions = this.getAllowedTransitions();
+            this.renderButtons();
+        },
+        getAllowedTransitions() {
+            return this.workflow.states[this.workflow.stageToState[this.taskStageId]].out_transitions
+                .map((transitionId) => this.workflow.transitions[transitionId]);
+        },
+        renderButtons() {
+            this.$el.empty();
+            if (this.outTransitions.length > this.size + 1) {
+                // This won't fit
+                for (let i = 0; i < this.size; i++) {
+                    this.$el.append(this.generateButton(this.outTransitions[i]));
+                }
+                // TODO: Generate dropdown!
+                const overflow = this.outTransitions.slice(this.size);
+                this.$el.append(this.generateOverflow(overflow));
+                this.$('.dropdown-button').dropdown();
+            } else {
+                // This will fit
+                this.outTransitions.forEach((trId) => {
+                    this.$el.append(this.generateButton(trId));
+                });
+            }
+        },
+        generateButton(transition, overflow) {
+            const newState = this.workflow.states[transition.dst];
+            const button = overflow ? this.renderOverflowElement(transition.name) : this.renderButton(transition.name);
+            button.click(() => {
+                if (transition.user_confirmation) {
+                    this.openStageChangeModal(newState.stage_id, newState.name, this.taskWidget, () => {
+                        this.updateStage(newState);
+                    });
+                    return;
+                }
+
+                this.taskWidget._model.stage_id = newState.stage_id;
+                this.updateStage(newState);
+
+            });
+            return button;
+        },
+        generateOverflow(overflow) {
+            const wrapper = $("<div style='display: inline-block;'/>");
+            wrapper.append($("<a class='dropdown-button btn' data-activates='workflow-transition-widget-overflow'>...<i class='mdi mdi-chevron-down'/></a>"));
+            const list = $("<ul id='workflow-transition-widget-overflow' class='dropdown-content'>");
+            wrapper.append(list);
+            overflow.forEach((trId) => {
+                const elem = $("<li/>");
+                elem.append(this.generateButton(trId, true));
+                list.append(elem);
+            });
+            return wrapper;
+        },
+        renderButton(text) {
+            return $("<a class='waves-effect waves-light btn'>" + text + "</a>");
+        },
+        renderOverflowElement(text) {
+            return $("<a class='waves-effect waves-light'>" + text + "</a>");
+        },
+        updateStage(state) {
+            this.setCurrentStage(state.stage_id);
+        },
+        openStageChangeModal(newStageId, newStateName, taskWidget) {
+            let userName = false;
+
+            if (taskWidget._model.user_id) {
+                if (taskWidget._model.user_id instanceof Array) {
+                    userName = taskWidget._model.user_id[1];
+                } else {
+                    userName = taskWidget._model.user_id.name;
+                }
+            }
+
+            const modal = new AgileModals.TaskStageConfirmationModal(this, {
+                taskId: taskWidget.id,
+                stageId: newStageId,
+                stageName: newStateName,
+                // userId: taskWidget._model.user_id ? taskWidget._model.user_id.id : false,
+                userName: userName,
+            });
+            modal.appendTo($("body"));
+        },
+        addedToDOM() {
+            this._super();
+            this.$('.dropdown-button').dropdown();
+        },
+    });
+
+    const TaskView = BaseWidgets.AgileViewWidget.extend({
         title: "Task View",
         _name: "TaskView",
         template: "scrummer.view.task",
@@ -28,9 +148,9 @@ odoo.define('scrummer.view.task', function (require) {
                 callback: '_onAssignToMeClick',
                 sequence: 1,
                 hidden() {
-                    let taskWidget = this.taskWidget;
+                    const taskWidget = this.taskWidget;
                     return taskWidget.data_service.getRecord(taskWidget.id)
-                        .then(task => task.user_id && task.user_id[0] == data.session.uid)
+                        .then((task) => task.user_id && task.user_id[0] === ScrummerData.session.uid);
                 }
             },
 
@@ -41,9 +161,9 @@ odoo.define('scrummer.view.task', function (require) {
                 callback: '_onUnassignClick',
                 sequence: 2,
                 hidden() {
-                    let taskWidget = this.taskWidget;
+                    const taskWidget = this.taskWidget;
                     return taskWidget.data_service.getRecord(taskWidget.id)
-                        .then(task => !(task.user_id && task.user_id[0] == data.session.uid))
+                        .then((task) => !(task.user_id && task.user_id[0] === ScrummerData.session.uid));
                 },
             },
             {
@@ -60,13 +180,11 @@ odoo.define('scrummer.view.task', function (require) {
                 callback: '_onAddSubItemClick',
                 sequence: 4,
                 hidden() {
-                    let taskWidget = this.taskWidget;
+                    const taskWidget = this.taskWidget;
                     return taskWidget.data_service.getRecord(taskWidget.id)
-                        .then(task => {
-                            return DataServiceFactory.get("project.task.type2")
-                                .getRecord(task.type_id[0])
-                                .then(task_type => !task_type.allow_sub_tasks)
-                        })
+                        .then((task) => DataServiceFactory.get("project.task.type2")
+                            .getRecord(task.type_id[0])
+                            .then((task_type) => !task_type.allow_sub_tasks));
                 },
             },
             {
@@ -101,12 +219,12 @@ odoo.define('scrummer.view.task', function (require) {
 
         init(parent, options) {
             this._super(parent, options);
-            this.taskId = parseInt(hash_service.get("task"));
+            this.taskId = parseInt(hash_service.get("task"), 10);
             if (!this.taskId) {
                 throw new Error(_t("Task id must be set in Task view"));
             }
             this.renderTask();
-            hash_service.on("change:task", this, (hash_service, options) => this.loadTask(parseInt(hash_service.get("task"))));
+            hash_service.on("change:task", this, () => this.loadTask(parseInt(hash_service.get("task"), 10)));
         },
         renderTask(id, data) {
             if (id) {
@@ -129,14 +247,14 @@ odoo.define('scrummer.view.task', function (require) {
             this.taskWidget.appendTo(this.$el);
         },
         afterTaskRender() {
-            let title = $(qweb.render("scrummer.view.task.title", {widget: this.taskWidget}));
-            title.find(".task-key").click(e => {
-                let taskId = $(e.currentTarget).attr("task-id");
+            const title = $(qweb.render("scrummer.view.task.title", {widget: this.taskWidget}));
+            title.find(".task-key").click((e) => {
+                const taskId = $(e.currentTarget).attr("task-id");
                 hash_service.setHash("task", taskId);
                 hash_service.setHash("view", "task");
                 hash_service.setHash("page", "board");
             });
-            this.setTitle(title, this.taskWidget._model.key + " " +this.taskWidget.name);
+            this.setTitle(title, this.taskWidget._model.key + " " + this.taskWidget.name);
             this.taskWidget.$el.responsive();
 
             if (this.workflowTaskWidget) {
@@ -161,23 +279,24 @@ odoo.define('scrummer.view.task', function (require) {
             widget._is_added_to_DOM.then(() => {
                 $("#middle-content").scrollToElement(widget.$el);
                 widget.$el.highlight();
-            })
+            });
         },
         start() {
             core.bus.on("project.task:write", this, (id, vals, payload, record) => {
                 if (id === this.taskId) {
-                    let editPromise = record._edit("check") ? record._edit() : $.when();
+                    const editPromise = record._edit("check") ? record._edit() : $.when();
                     editPromise.then(() => {
                         this.loadTask(record.id, record);
                     });
 
                     if (payload) {
-                        if (payload.user_id.id !== data.session.uid && payload.indirect === false) {
+                        if (payload.user_id.id !== ScrummerData.session.uid && payload.indirect === false) {
                             AgileToast.toastTask(payload.user_id, record, payload.method);
                         }
                     }
                 }
             });
+            /* eslint-disable-next-line no-unused-vars */
             core.bus.on("project.task:unlink", this, (id, payload) => {
                 // TODO: Remove actions, floating buttons, generate overlay with message box telling that task has been deleted
             });
@@ -194,13 +313,13 @@ odoo.define('scrummer.view.task', function (require) {
         },
 
         _onAssignToMeClick() {
-            this.taskWidget._model.user_id = data.session.uid;
+            this.taskWidget._model.user_id = ScrummerData.session.uid;
         },
         _onUnassignClick() {
             this.taskWidget._model.user_id = false;
         },
         _onEditItemClick() {
-            let newItemModal = new AgileModals.NewItemModal(this, {
+            const newItemModal = new AgileModals.NewItemModal(this, {
                 currentProjectId: this.taskWidget._model.project_id[0],
                 focus: "name",
                 edit: this.taskWidget._model,
@@ -208,27 +327,27 @@ odoo.define('scrummer.view.task', function (require) {
             newItemModal.appendTo($("body"));
         },
         _onAddSubItemClick() {
-            let newItemModal = new AgileModals.NewItemModal(this, {
+            const newItemModal = new AgileModals.NewItemModal(this, {
                 currentProjectId: this.taskWidget._model.project_id[0],
                 parent_id: this.taskWidget._model.id,
             });
             newItemModal.appendTo($("body"));
         },
         _onAddLinkClick() {
-            let modal = new AgileModals.LinkItemModal(this, {
+            const modal = new AgileModals.LinkItemModal(this, {
                 task: this.taskWidget._model,
             });
             modal.appendTo($("body"));
         },
         _onWorkLogClick() {
-            let modal = new AgileModals.WorkLogModal(this, {
+            const modal = new AgileModals.WorkLogModal(this, {
                 task: this.taskWidget._model,
-                userId: data.session.uid,
+                userId: ScrummerData.session.uid,
             });
             modal.appendTo($("body"));
         },
         _onAddCommentClick() {
-            let modal = new AgileModals.CommentItemModal(this, {
+            const modal = new AgileModals.CommentItemModal(this, {
                 task: this.taskWidget._model,
             });
             modal.appendTo($("body"));
@@ -237,129 +356,6 @@ odoo.define('scrummer.view.task', function (require) {
             dialog.confirm(_t("Delete task"), _t("Are you sure you want to delete this task?"), _t("yes")).done(() => {
                 this.taskWidget._model.unlink();
             });
-        },
-    });
-
-    const WorkflowTransitionsWidget = BaseWidgets.AgileBaseWidget.extend({
-        id: "workflow-transition-widget",
-        init(parent, options) {
-            Object.assign(this, options);
-            this._super(parent, options);
-            this._require_obj("taskWidget");
-            this.workflowId = this.taskWidget._model.workflow_id[0];
-            this.taskStageId = this.taskWidget._model.stage_id[0];
-            this.size = this.size || 2;
-        },
-        willStart() {
-            return $.when(this._super(),
-                data.cache.get("project.workflow", {id: this.workflowId}).then(workflow => {
-                    this.workflow = workflow;
-                }),
-                data.cache.get("current_user").then(user => {
-                    this.current_user = user;
-                }));
-        },
-        renderElement() {
-            this._super();
-            this.setCurrentStage();
-        },
-        setSize(size) {
-            this.size = size;
-            this.setCurrentStage();
-        },
-        setCurrentStage(stageId) {
-            if (stageId) {
-                this.taskStageId = stageId;
-            }
-            this.outTransitions = this.getAllowedTransitions();
-            this.renderButtons();
-        },
-        getAllowedTransitions() {
-            return this.workflow.states[this.workflow.stageToState[this.taskStageId]].out_transitions
-                .map(transitionId => this.workflow.transitions[transitionId]);
-        },
-        renderButtons() {
-            this.$el.empty();
-            if (this.outTransitions.length > this.size + 1) { // This won't fit
-                for (let i = 0; i < this.size; i++) {
-                    this.$el.append(this.generateButton(this.outTransitions[i]));
-                }
-                // TODO: Generate dropdown!
-                let overflow = this.outTransitions.slice(this.size);
-                this.$el.append(this.generateOverflow(overflow));
-                this.$('.dropdown-button').dropdown();
-            }
-            else { // This will fit
-                this.outTransitions.forEach(trId => {
-                    this.$el.append(this.generateButton(trId));
-                })
-            }
-        },
-        generateButton(transition, overflow) {
-            let newState = this.workflow.states[transition.dst];
-            let button = overflow ? this.renderOverflowElement(transition.name) : this.renderButton(transition.name);
-            button.click(() => {
-                if (transition.user_confirmation) {
-                    this.openStageChangeModal(newState.stage_id, newState.name, this.taskWidget, () => {
-                        this.updateStage(newState);
-                    });
-                    return;
-                } else {
-
-                    this.taskWidget._model.stage_id = newState.stage_id;
-                    this.updateStage(newState);
-                }
-            });
-            return button;
-        },
-        generateOverflow(overflow) {
-            let wrapper = $("<div style='display: inline-block;'/>");
-            wrapper.append($("<a class='dropdown-button btn' data-activates='workflow-transition-widget-overflow'>...<i class='mdi mdi-chevron-down'/></a>"));
-            let list = $("<ul id='workflow-transition-widget-overflow' class='dropdown-content'>");
-            wrapper.append(list);
-            overflow.forEach(trId => {
-                let elem = $("<li/>");
-                elem.append(this.generateButton(trId, true));
-                list.append(elem);
-            });
-            return wrapper;
-        },
-        renderButton(text) {
-            return $("<a class='waves-effect waves-light btn'>" + text + "</a>");
-        },
-        renderOverflowElement(text) {
-            return $("<a class='waves-effect waves-light'>" + text + "</a>");
-        },
-        updateStage(state) {
-            this.setCurrentStage(state.stage_id);
-        },
-        openStageChangeModal(newStageId, newStateName, taskWidget, confirmedCallback) {
-            let userName = false;
-
-            if (taskWidget._model.user_id) {
-                if (taskWidget._model.user_id instanceof Array) {
-                    userName = taskWidget._model.user_id[1];
-                } else {
-                    userName = taskWidget._model.user_id.name;
-                }
-            }
-
-            let modal = new AgileModals.TaskStageConfirmationModal(this, {
-                taskId: taskWidget.id,
-                stageId: newStageId,
-                stageName: newStateName,
-                // userId: taskWidget._model.user_id ? taskWidget._model.user_id.id : false,
-                userName: userName,
-                afterHook: (comment, confirmation, form) => {
-
-                    // confirmedCallback();
-                }
-            });
-            modal.appendTo($("body"));
-        },
-        addedToDOM() {
-            this._super();
-            this.$('.dropdown-button').dropdown();
         },
     });
 

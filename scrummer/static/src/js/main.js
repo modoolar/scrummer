@@ -3,8 +3,8 @@
 
 odoo.define('scrummer.main', function (require) {
     "use strict";
-    var AgileLayout = require('scrummer.layout');
-    var core = require('web.core');
+    const AgileLayout = require('scrummer.layout');
+    const core = require('web.core');
 
     core.action_registry.add('scrummer', AgileLayout.AgileLayout);
 

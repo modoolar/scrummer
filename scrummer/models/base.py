@@ -27,5 +27,5 @@ class AgileSystemCodeItem(models.AbstractModel):
     system = fields.Boolean(scrummer=True)
     active = fields.Boolean(scrummer=True)
     sequence = fields.Integer(scrummer=True)
-    scrummer_icon = fields.Char(string='Scrummer Icon')
-    scrummer_icon_color = fields.Char(string='Scrummer Icon Color')
+    scrummer_icon = fields.Char()
+    scrummer_icon_color = fields.Char()

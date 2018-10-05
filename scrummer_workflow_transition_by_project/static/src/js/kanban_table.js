@@ -7,11 +7,11 @@ odoo.define(function (require) {
     require('scrummer.view.kanban_table').AbstractKanbanTable.include({
 
         getAvailableTransitions(currentState, workflow, task) {
-            let transitions = this._super(currentState, workflow, task);
-            let projects = [task.project_id[0]];
+            const transitions = this._super(currentState, workflow, task);
+            const projects = [task.project_id[0]];
 
             return _.filter(transitions,
-                t => !(_.size(t.project_ids) > 0 && _.size(_.intersection(projects, t.project_ids)) == 0));
+                (t) => !(_.size(t.project_ids) > 0 && _.size(_.intersection(projects, t.project_ids)) === 0));
         },
 
     });

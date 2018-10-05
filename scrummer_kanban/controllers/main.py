@@ -7,7 +7,6 @@ from odoo.addons.scrummer.controllers import main
 
 class ScrummerController(main.ScrummerController):
 
-
     @http.route([
         '/scrummer/web/data/kanban_board/<model("project.agile.board"):board>'
     ], type='json', auth='user')
@@ -46,7 +45,7 @@ class ScrummerController(main.ScrummerController):
 
         for project in board.project_ids:
             if not project_id or project_id and project_id == project.id:
-                board_data['board']['projects'][project.id] =\
+                board_data['board']['projects'][project.id] = \
                     self.prepare_project(project)
 
         task_filter = self._prepare_kanban_task_filter(board_data, board)

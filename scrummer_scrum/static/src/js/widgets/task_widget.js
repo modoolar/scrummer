@@ -4,20 +4,21 @@
 odoo.define('scrummer.widget.task.scrum_extension', function (require) {
     "use strict";
 
-    var TaskWidget = require('scrummer.widget.task').TaskWidget;
+    const TaskWidget = require('scrummer.widget.task').TaskWidget;
+    const DataServiceFactory = require('scrummer.data_service_factory');
 
 
     TaskWidget.include({
         renderElement() {
             this._super();
             if(this._model.sprint_ids.length > 1){
-                DataServiceFactory.get("project.agile.scrum.sprint").getRecords(this._model.sprint_ids).then(sprints=>{
-                    let sprintContainer = this.$("[data-field='sprint_ids']");
-                    for (let sprint of sprints) {
-                        sprintContainer.append($(`<span class="agile-tag">${sprint.name}</span>`))
+                DataServiceFactory.get("project.agile.scrum.sprint").getRecords(this._model.sprint_ids).then((sprints)=>{
+                    const sprintContainer = this.$("[data-field='sprint_ids']");
+                    for (const sprint of sprints) {
+                        sprintContainer.append($(`<span class="agile-tag">${sprint.name}</span>`));
                     }
                     this.$("[data-field-name='sprint_ids']").show();
-                })
+                });
             }
         }
     });

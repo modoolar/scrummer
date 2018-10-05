@@ -5,16 +5,23 @@ odoo.define(function (require) {
     "use strict";
 
     require('scrummer.view.kanban_table').AbstractKanbanTable.include({
-
+        /**
+         *
+         * @param {Object} currentState
+         * @param {Object} workflow
+         * @param {Object} task
+         * @returns {*}
+         */
         getAvailableTransitions(currentState, workflow, task) {
-            let transitions = this._super(currentState, workflow, task);
+            const transitions = this._super(currentState, workflow, task);
             // If transition doesn't have task_type_ids, let it pass,
             // otherwise let only transitions whose task_type_ids includes this task.type_id[0]
-            return transitions.filter(t => {
+            return transitions.filter((t) => {
                 if (!Array.isArray(t.task_type_ids)) {
                     return true;
                 }
-                return !t.task_type_ids.length || t.task_type_ids.length && t.task_type_ids.includes(task.type_id[0]);
+                return !t.task_type_ids.length ||
+                    (t.task_type_ids.length && t.task_type_ids.includes(task.type_id[0]));
             });
         },
     });

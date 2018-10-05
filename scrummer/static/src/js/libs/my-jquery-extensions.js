@@ -2,8 +2,10 @@
 // License LGPLv3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.en.html).
 'use strict';
 jQuery.fn.getDataFromAncestor = function (dataAttr, oldest = "body") {
-    var el = $(this[0]);
-    return el.is(oldest) || el.data(dataAttr) !== undefined || el.parent().length == 0 ? el.data(dataAttr) : el.parent().getDataFromAncestor(dataAttr);
+    const el = $(this[0]);
+    return (el.is(oldest) || el.data(dataAttr) !== undefined || el.parent().length == 0)
+        ? (el.data(dataAttr) || null )
+        : el.parent().getDataFromAncestor(dataAttr);
 };
 
 $.fn.insertAt = function (elements, index) {
