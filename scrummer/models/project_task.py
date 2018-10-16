@@ -86,7 +86,6 @@ class Task(models.Model):
     color = fields.Integer(scrummer=True)
     date_deadline = fields.Date(scrummer=True)
     wkf_state_type = fields.Selection(scrummer=True)
-    allow_story_points = fields.Boolean(scrummer=True)
     is_user_story = fields.Boolean(scrummer=True)
     is_epic = fields.Boolean(scrummer=True)
     create_date = fields.Datetime(scrummer=True)
