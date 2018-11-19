@@ -62,7 +62,8 @@ class ScrumTeam(models.Model):
         ],
         string='Default sprint length',
         default='2',
-        help="Default Sprint time for this project"
+        help="Default Sprint time for this project",
+        scrummer=True,
     )
 
     @api.multi

@@ -27,7 +27,7 @@ class ScrummerController(main.ScrummerController):
     @http.route([
         '/scrummer/web/data/sprint'
         '/<model("project.agile.scrum.sprint"):sprint>/stop',
-        ], type='json', auth='user')
+    ], type='json', auth='user')
     def sprint_stop(self, sprint):
         # Mark sprint as done
         sprint.write({
@@ -109,7 +109,7 @@ class ScrummerController(main.ScrummerController):
 
         for project in board.project_ids:
             if not project_id or project_id and project_id == project.id:
-                board_data['board']['projects'][project.id] =\
+                board_data['board']['projects'][project.id] = \
                     self.prepare_project(project)
 
         active_sprint = request.env.user.team_id.active_sprint_id
@@ -133,8 +133,9 @@ class ScrummerController(main.ScrummerController):
             board_data['ids'] = tasks_in_board.ids
         return board_data
 
-    def _prepare_sprint_task_filter(self, active_sprint, board_data,
-                                    stages_in_board, board):
+    def _prepare_sprint_task_filter(
+            self, active_sprint, board_data,
+            stages_in_board, board):
         task_filter = [
             ('sprint_id', '=', active_sprint.id),
             ('stage_id', 'in', stages_in_board),
@@ -163,7 +164,10 @@ class ScrummerController(main.ScrummerController):
 
     def prepare_user_team(self, team):
         result = super(ScrummerController, self).prepare_user_team(team)
-        result["sprint_ids"] = team.sprint_ids.filtered(
-            lambda x: x.state != "completed"
-        ).ids
+        result.update({
+            "sprint_ids": team.sprint_ids.filtered(
+                lambda x: x.state != "completed"
+            ).ids,
+            "default_sprint_length": int(team.default_sprint_length)
+        })
         return result

@@ -74,13 +74,13 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
             };
         },
         start_date_f() {
-            return this._model.start_date;
+            return moment(moment.utc(this._model.start_date, "YYYY-MM-DD HH:mm:SS").toDate()).format("LLL");
             // var formatted = field_utils.format['datetime'](this._model.start_date);
             // return formatted;
         },
 
         end_date_f() {
-            return this._model.end_date;
+            return moment(moment.utc(this._model.end_date, "YYYY-MM-DD HH:mm:SS").toDate()).format("LLL")
             // var formatted = field_utils.format['datetime'](this._model.end_date);
             // return formatted;
         },
@@ -531,11 +531,11 @@ odoo.define('scrummer_scrum.view.backlog', function (require) {
         _onStartSprint(evt) {
             const sprint = evt.data.sprint;
             dialog.confirm(_t("Start sprint"), _t("Are you sure you want to start this sprint?"), _t("yes")).done(() => {
-                let start_date = moment(new Date()).hours(9).minutes(0).seconds(0);
+                let start_date = moment().hours(9).minutes(0).seconds(0);
 
                 // When loading backlog view we need to load team details as well.
-                // TODO: Here we need to take actual sprint length setting from team level.
-                let end_date = start_date.clone().add(2, 'week');
+                const sprint_length = this.user.team_ids[this.user.team_id[0]].default_sprint_length;
+                let end_date = start_date.clone().add(sprint_length, 'week');
 
                 start_date = field_utils.parse.datetime(start_date); //, {timezone: false}
                 end_date = field_utils.parse.datetime(end_date); //, {timezone: false})
